@@ -7,15 +7,22 @@ import * as process from "process";
 import { User } from "./users/users.model";
 import { RolesService } from './role/roles.service';
 import { RolesController } from './role/roles.controller';
-import { RoleModules } from './role/role.modules';
-import { Role } from "./role/role.models";
-import { UserRoles } from "./users/user-roles.model";
+import { RolesModule } from './role/roles.module';
+import { Role } from "./role/roles.model";
+import { UserRoles } from "./role/user-roles.model";
+import { UsersController } from "./users/users.controller";
+import { UsersService } from "./users/users.service";
+import { AuthModule } from './auth/auth.module';
+import { CardsModule } from './cards/cards.module';
+import { Card } from "./cards/cards.model";
+import { UserCards } from "./cards/user-cards.model";
+import { FilesModule } from './files/files.module';
 
 
 
 @Module({
-  controllers: [RolesController],
-  providers: [RolesService],
+  controllers: [],
+  providers: [],
   imports: [
     ConfigModule.forRoot({
       envFilePath: `.${process.env.NODE_ENV}.env`
@@ -27,11 +34,14 @@ import { UserRoles } from "./users/user-roles.model";
       username: process.env.POSTGRES_USER,
       password: String(process.env.POSTGRESS_PASSWORD),
       database: process.env.POSTGRES_DB,
-      models: [User, Role, UserRoles],
+      models: [User, Role, UserRoles, Card, UserCards],
       autoLoadModels: true
     }),
     UsersModule,
-    RoleModules,
+    RolesModule,
+    AuthModule,
+    CardsModule,
+    FilesModule,
   ],
 })
 export class AppModule {}

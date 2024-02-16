@@ -1,8 +1,10 @@
 
 import { Column, DataType, Table, Model, BelongsToMany } from "sequelize-typescript";
 import { ApiProperty } from "@nestjs/swagger";
-import { Role } from "../role/role.models";
-import { UserRoles } from "./user-roles.model";
+import { Role } from "../role/roles.model";
+import { UserRoles } from "../role/user-roles.model";
+import { Card } from "../cards/cards.model";
+import { UserCards } from "../cards/user-cards.model";
 
 interface UserCreationAttrs {
   password: string;
@@ -28,9 +30,12 @@ export class User extends Model<User, UserCreationAttrs> {
     banned: boolean;
 
     @ApiProperty({example: 'за агрессию', description:'причина бана'})
-    @Column({type: DataType.BOOLEAN, allowNull: true})
+    @Column({type: DataType.STRING, allowNull: true})
     banReason: string;
 
-    @BelongsToMany(() => User, () => UserRoles)
-    users: User[]
+    @BelongsToMany(() => Role, () => UserRoles)
+    roles: Role[]
+
+    @BelongsToMany(()=> Card, ()=> UserCards)
+    cards: Card[]
 }
