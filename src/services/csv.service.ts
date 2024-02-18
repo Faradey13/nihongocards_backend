@@ -19,23 +19,21 @@ export class CsvService {
         fs.createReadStream(filePath)
           .pipe(csvParser())
           .on('data', (data) => {
-              console.log('Data from CSV:', data);
-              records.push(this.createPostFromRecord(data));
+              records.push(this.createCardFromRecord(data));
           })
           .on('end', async () => {
-              console.log('Records:', records);
-              console.log('Starting bulk create operation...');
-              await this.cardRepository.bulkCreate(records);
-              console.log('CSV file has been processed successfully.');
+              try {
+                  await this.cardRepository.bulkCreate(records);
+              } catch (e) {
+                  console.log(e.message)
+              }
           })
           .on('error', (error) => {
-              console.log('Bulk create operation completed.');
-              console.error('Error processing CSV file:', error);
               throw error;
           });
     }
 
-    private createPostFromRecord(record: any): any {
+    private createCardFromRecord(record: any): any {
         console.log('Record being processed:', record, { ignoreDuplicates: true });
 
             return {
