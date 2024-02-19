@@ -19,14 +19,18 @@ export class CsvService {
         fs.createReadStream(filePath)
           .pipe(csvParser())
           .on('data', (data) => {
+
               records.push(this.createCardFromRecord(data));
           })
           .on('end', async () => {
+
               try {
                   await this.cardRepository.bulkCreate(records);
               } catch (e) {
                   console.log(e.message)
               }
+
+
           })
           .on('error', (error) => {
               throw error;

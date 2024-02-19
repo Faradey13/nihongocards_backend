@@ -13,7 +13,8 @@ export class CardsService {
     async createOneCard(dto: CreateCardDto, image: any, audio: any) {
         const fileNameImage = await this.fileService.createFile(image)
         const fileNameAudio = await this.fileService.createFile(audio)
-        const card = await this.cardRepository.create({...dto, image: fileNameImage, audio: fileNameAudio})
-        return card
+        return await this.cardRepository.create({...dto, image: fileNameImage, audio: fileNameAudio})
     }
+
+
 }
