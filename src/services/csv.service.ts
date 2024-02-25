@@ -17,11 +17,16 @@ export class CsvService {
         const records: Card[] = [];
 
         fs.createReadStream(filePath)
-          .pipe(csvParser())
+          .pipe(csvParser({ separator: ';' }))
           .on('data', (data) => {
 
-              records.push(this.createCardFromRecord(data));
-          })
+            const sanitizedData = {};
+            for (const key in data) {
+                sanitizedData[key.replace(/^\ufeff/, '')] = data[key];
+            }
+            records.push(this.createCardFromRecord(sanitizedData));
+        })
+
           .on('end', async () => {
 
               try {
@@ -45,7 +50,7 @@ export class CsvService {
             translation : record.translation,
             example : record.example,
             category : record.category,
-            difficulty : parseInt(record.difficulty, 10),
+            difficulty : Number(record.difficulty),
             image : record.image,
             audio : record.audio,
         }

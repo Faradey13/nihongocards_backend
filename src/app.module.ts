@@ -13,7 +13,11 @@ import { AuthModule } from "./modules/auth.module";
 import { CardsModule } from "./modules/cards.module";
 import { FilesModule } from "./modules/files.module";
 import { CsvModule } from "./modules/csv.module";
-import { TypeOrmModule } from "@nestjs/typeorm";
+import { ServeStaticModule } from "@nestjs/serve-static";
+import * as path from "path";
+import { CurrentLessonCards } from "./models/currentLessonCards.model";
+import { CurrentLessonCardsModule } from "./modules/currentLessonCards.module";
+import { GatewayModule } from "./modules/gateway.module";
 
 
 
@@ -21,6 +25,9 @@ import { TypeOrmModule } from "@nestjs/typeorm";
   controllers: [],
   providers: [],
   imports: [
+    ServeStaticModule.forRoot({
+      rootPath: path.join(__dirname,  'static'),
+    }),
     ConfigModule.forRoot({
       envFilePath: `.${process.env.NODE_ENV}.env`
     }),
@@ -31,7 +38,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
       username: process.env.POSTGRES_USER,
       password: String(process.env.POSTGRESS_PASSWORD),
       database: process.env.POSTGRES_DB,
-      models: [User, Role, UserRoles, Card, UserCards],
+      models: [User, Role, UserRoles, Card, UserCards, CurrentLessonCards],
       autoLoadModels: true,
 
     }),
@@ -41,6 +48,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
     CardsModule,
     FilesModule,
     CsvModule,
+    CurrentLessonCardsModule,
+    GatewayModule
     
   ],
 })

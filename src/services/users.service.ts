@@ -5,29 +5,48 @@ import { RolesService } from "./roles.service";
 import { CreateUserDto } from "../dto/create-user.dto";
 import { AddRoleDto } from "../dto/add-role.dto";
 import { BanUserDto } from "../dto/ban-user.dto";
+import { UserCards } from "../models/user-cards.model";
+import { Card } from "../models/cards.model";
 
 
 
 @Injectable()
 export class UsersService {
   constructor(@InjectModel(User) private userRepository: typeof User,
-              private roleService: RolesService) {}
+              private roleService: RolesService,
+              @InjectModel(UserCards) private userCardsRepository: typeof UserCards,
+              @InjectModel(Card) private cardsRepository: typeof Card) {}
   async createUser(dto: CreateUserDto) {
     const user = await this.userRepository.create(dto)
-    const role = await this.roleService.getRoleByValue('ADMIN')
+
+    const role = await this.roleService.getRoleByValue('USER')
+
     await user.$set('roles', [role.id])
     user.roles = [role]
+
+    try {
+        const cards = await this.cardsRepository.findAll()
+
+        const userCardData = cards.map((card) => ({
+            userId: user.id,
+            cardId: card.id
+        }));
+       const newCards = userCardData.map((data) => this.userCardsRepository.build(data))
+
+        await this.userCardsRepository.create(newCards);
+
+    } catch (e) {
+      throw new HttpException(`Ошибка: ${e.message}`, HttpStatus.INTERNAL_SERVER_ERROR )
+    }
       return user
   }
 
   async getAllUsers() {
-    const users = await  this.userRepository.findAll({include: { all:true}})
-      return users
+      return  await  this.userRepository.findAll({include: { all:true}})
   }
 
   async getUserByEmail(email: string) {
-    const user = await this.userRepository.findOne({where: {email}, include: { all: true}})
-    return user
+    return await this.userRepository.findOne({where: {email}, include: { all: true}})
   }
 
   async addRole(dto: AddRoleDto) {

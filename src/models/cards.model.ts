@@ -1,7 +1,8 @@
 
-import { Column, DataType, Table, Model, BelongsToMany } from "sequelize-typescript";
+import { Column, DataType, Table, Model, BelongsToMany, HasMany } from "sequelize-typescript";
 import { UserCards } from "./user-cards.model";
 import { User } from "./users.model";
+import { CurrentLessonCards } from "./currentLessonCards.model";
 
 
 interface CardCreationAttrs {
@@ -25,13 +26,13 @@ export class Card extends Model<Card, CardCreationAttrs> {
     @Column({type: DataType.STRING,  allowNull: false})
     translation: string;
 
-    @Column({type: DataType.STRING, allowNull: false})
+    @Column({type: DataType.STRING})
     example: string;
 
     @Column({type: DataType.STRING, allowNull: false})
     category: string;
 
-    @Column({type: DataType.INTEGER, allowNull: false})
+    @Column({type: DataType.INTEGER})
     difficulty: number;
 
 
@@ -43,4 +44,12 @@ export class Card extends Model<Card, CardCreationAttrs> {
 
     @BelongsToMany(() => User, () => UserCards)
     user: User[]
+
+    @HasMany(() => UserCards)
+    userCards: UserCards[];
+
+    @HasMany(() => CurrentLessonCards)
+    currentLessonCards: CurrentLessonCards[];
+
+
 }

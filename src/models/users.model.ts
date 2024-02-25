@@ -1,5 +1,5 @@
 
-import { Column, DataType, Table, Model, BelongsToMany } from "sequelize-typescript";
+import { Column, DataType, Table, Model, BelongsToMany, BeforeCreate } from "sequelize-typescript";
 import { ApiProperty } from "@nestjs/swagger";
 import { UserRoles } from "./user-roles.model";
 import { Role } from "./roles.model";
@@ -33,6 +33,11 @@ export class User extends Model<User, UserCreationAttrs> {
     @ApiProperty({example: 'за агрессию', description:'причина бана'})
     @Column({type: DataType.STRING, allowNull: true})
     banReason: string;
+    @BeforeCreate
+    static async setDefaultCount(model: User){
+        model.banReason = 'ggg'
+    }
+
 
     @BelongsToMany(() => Role, () => UserRoles)
     roles: Role[]
