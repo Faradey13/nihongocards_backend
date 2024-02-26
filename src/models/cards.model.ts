@@ -45,10 +45,10 @@ export class Card extends Model<Card, CardCreationAttrs> {
     @BelongsToMany(() => User, () => UserCards)
     user: User[]
 
-    @HasMany(() => UserCards)
+    @HasMany(() => UserCards,{ onDelete: 'CASCADE' })
     userCards: UserCards[];
 
-    @HasMany(() => CurrentLessonCards)
+    @HasMany(() => CurrentLessonCards, { onDelete: 'CASCADE' })
     currentLessonCards: CurrentLessonCards[];
 
 

@@ -3,4 +3,5 @@ export class GetCardDto{
     readonly newLimit: number
     readonly category: string;
     readonly userId: number
+
 }

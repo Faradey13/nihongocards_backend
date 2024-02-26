@@ -3,7 +3,7 @@ import { Card } from "./cards.model";
 import { UserCards } from "./user-cards.model";
 
 
-@Table({tableName:'currentLessonCards', timestamps:  false})
+@Table({tableName:'currentLessonCards'})
 export class CurrentLessonCards extends Model<CurrentLessonCards> {
     @Column({type: DataType.INTEGER, unique: true, autoIncrement: true, primaryKey: true})
     id: number;
@@ -73,11 +73,10 @@ export class CurrentLessonCards extends Model<CurrentLessonCards> {
 
     @Column({type: DataType.INTEGER, unique: true})
     position: number
-    @BeforeCreate
-    static async fillPosition(model: CurrentLessonCards){
-        const maxId = await CurrentLessonCards.max("id")
-        model.position = maxId ? (maxId as number) + 1 : 1;
-    }
+
+    @Column({type: DataType.DATE})
+    currentLessonData: Date
+
 
 
     @BelongsTo(() => UserCards)

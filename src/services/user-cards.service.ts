@@ -4,6 +4,8 @@ import { InjectModel } from "@nestjs/sequelize";
 import { UserCards } from "../models/user-cards.model";
 import { GetCardDto } from "../dto/getCard.dto";
 import { User } from "../models/users.model";
+import { Op } from "sequelize";
+import { Sequelize } from "sequelize-typescript";
 
 @Injectable()
 export class UserCardsService {
@@ -29,7 +31,14 @@ export class UserCardsService {
                 })
             })
             const userCards = userCardData.map(data => this.userCardsRepository.build(data));
-            await Promise.all(userCards.map(userCard => userCard.save()));
+            await Promise.all(userCards.map(userCard => {
+                if(!userCard.cardId && !userCard.userId){
+                    userCard.save();
+                } else {
+                    console.log(`пара карта ${userCard.cardId} и пользователь ${userCard.userId} уже существует, пропуск`)
+                }
+
+            }));
 
             return { success: true, message: 'Карты успешно добавлены пользователям' };
 
@@ -65,7 +74,7 @@ export class UserCardsService {
         }
         const today = new Date();
         currentCard.lastRepetition = today;
-        currentCard.nextRepetition = new Date(today.setDate(today.getDate() + currentCard.interval));
+        currentCard.nextRepetition = (new Date(today.setDate(today.getDate() + currentCard.interval)))
         await currentCard.save();
         return currentCard;
     };
@@ -87,7 +96,10 @@ export class UserCardsService {
         const repetitionCards = await this.userCardsRepository.findAll(({
             where: {
                 userId: dto.userId,
-                nextRepetition: formattedToday
+                nextRepetition:  {
+                    [Op.gte] : Sequelize.literal('DATE_NOW'),
+                    [Op.lt] : Sequelize.literal('DATE_NOW + INTERVAL 1 DAY')
+                }
             },
             limit: dto.limit
         }));
@@ -102,10 +114,20 @@ export class UserCardsService {
                 id: Array.from(cardIds)
             }
         });
-
-
     };
 
+    async refreshProgress(userId: number){
+        await this.userCardsRepository.update({
+            factorOfEasiness: 2.5,
+            interval: 0,
+            repetitionNumber: 0,
+            repetitionCount: 0,
+            totalRepetitionCount: 0,
+            grade: 0,
+            lastRepetition: null,
+            isNew: true
 
+        },{where:{userId: userId}})
+    }
 }
 

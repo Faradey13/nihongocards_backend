@@ -33,10 +33,9 @@ export class User extends Model<User, UserCreationAttrs> {
     @ApiProperty({example: 'за агрессию', description:'причина бана'})
     @Column({type: DataType.STRING, allowNull: true})
     banReason: string;
-    @BeforeCreate
-    static async setDefaultCount(model: User){
-        model.banReason = 'ggg'
-    }
+
+    @Column({type: DataType.DATE})
+    lastLessonDate: Date;
 
 
     @BelongsToMany(() => Role, () => UserRoles)

@@ -45,8 +45,6 @@ export class UserCards extends Model<UserCards> {
 
     @BeforeCreate
     static async setDefault(model: UserCards){
-        console.log('Хук @BeforeCreate вызван для модели UserCards');
-        console.log('Полученные данные:', model.toJSON());
             model.repetitionNumber = 0
 
     }
