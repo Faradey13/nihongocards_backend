@@ -7,6 +7,8 @@ import { CurrentLessonCards } from "../models/currentLessonCards.model";
 import * as process from "process";
 import { RateCardDto } from "../dto/rateCard.dto";
 import { User } from "../models/users.model";
+import { Card } from "../models/cards.model";
+import { Op } from "sequelize";
 
 
 @Injectable()
@@ -16,6 +18,7 @@ export class CurrentLessonCardsService {
       @InjectModel(CurrentLessonCards) private currentLessonRepository: typeof CurrentLessonCards,
       @InjectModel(UserCards) private userCardsRepository: typeof UserCards,
       @InjectModel(User) private userRepository: typeof User,
+      @InjectModel(Card) private cardRepository: typeof Card,
       private userCardsService: UserCardsService
     ) {
     }
@@ -41,34 +44,75 @@ export class CurrentLessonCardsService {
 
 
     async startNewLesson(dto: GetCardDto) {
+        await this.currentLessonRepository.destroy({ where: {} });
         const today = (new Date());
-        const checkDate = await this.currentLessonRepository.findOne({ where: { userId: dto.userId } });
-        const lastLessonCard = checkDate.currentLessonData;
-        if (today.getTime() - lastLessonCard.getTime() > 24) {
-            await this.currentLessonRepository.destroy({
-                where: {
-                    userId: dto.userId
+        if (await this.currentLessonRepository.count() > 0) {
+            const checkDate = await this.currentLessonRepository.findOne({ where: { userId: dto.userId } });
+            if (checkDate) {
+                const lastLessonCard = checkDate.currentLessonData;
+                if (today.getTime() - lastLessonCard.getTime() > 24) {
+                    await this.currentLessonRepository.destroy({
+                        where: {
+                            userId: dto.userId
+                        }
+                    }).then(numRows => {
+                        console.log(`Удалено ${numRows} записей`);
+                    }).catch(error => {
+                        console.error("Ошибка удаления записей:", error);
+                    });
                 }
-            }).then(numRows => {
-                console.log(`Удалено ${numRows} записей`);
-            }).catch(error => {
-                console.error("Ошибка удаления записей:", error);
-            });
+            }
         }
+
         const cardsForLearn = await this.userCardsService.getCards(dto);
 
-        const lessonParam = await this.userCardsRepository.findAll({
+        const userCardIds = cardsForLearn.map(card => card.id);
+
+        const userCardsForLearn = await this.userCardsRepository.findAll({
             where: {
-                cardId: cardsForLearn.map(card => card.id)
+                cardId: userCardIds,
+                userId: dto.userId
+            }
+        });
+
+        const cardsFromCards = await this.cardRepository.findAll({
+            where: {
+                id: userCardIds
             }
         });
 
         try {
-            const cardsToCreate = cardsForLearn.map(card => ({ cardId: card.id }));
-            const lessonParamToCreate = lessonParam.map(param => ({ cardId: param.cardId }));
-            await this.currentLessonRepository.bulkCreate([...cardsToCreate, ...lessonParamToCreate]);
+            const unitedCards = [];
+            userCardsForLearn.forEach(cardU => {
+                const correspondingCard = cardsFromCards.find(card => card.id === cardU.cardId);
+                if (correspondingCard) {
+                    unitedCards.push({
+                        UserCardsId: cardU.id,
+                        cardId: correspondingCard.id,
+                        userId: cardU.userId,
+                        word: correspondingCard.word,
+                        translation: correspondingCard.translation,
+                        example: correspondingCard.example,
+                        category: correspondingCard.category,
+                        difficulty: correspondingCard.difficulty,
+                        image: correspondingCard.image,
+                        audio: correspondingCard.audio,
+                        repetitionNumber: cardU.repetitionNumber,
+                        repetitionCount: 0,
+                        totalRepetitionCount: cardU.totalRepetitionCount,
+                        grade: 0,
+                        isNew: cardU.isNew,
+                        isHard: cardU.isHard,
+                        position: null,
+                        currentLessonData: new Date()
+                    });
+                }
+            });
+
+
+            await this.currentLessonRepository.bulkCreate(unitedCards);
             await this.fillPosition(dto.userId);
-            await this.fillData(dto.userId);
+            // await this.fillData(dto.userId);
 
         } catch (e) {
             throw new HttpException(`Ошибка загрузки урока: ${e.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
@@ -82,68 +126,81 @@ export class CurrentLessonCardsService {
 
 
     async updateCard(dto: RateCardDto) {
-        console.log(dto.cardId);
+        const cardFromUser = await this.currentLessonRepository.findOne({ where: { cardId: dto.cardId, userId: dto.userId } });
 
 
-        const cardFromUser = await this.currentLessonRepository.findOne({ where: { cardId: dto.cardId, userId: dto.userID } });
-        console.log(cardFromUser);
+        let showAgain = false;
+        if (cardFromUser.repetitionNumber === 0) {
+            if (dto.grade < 3) {
+                cardFromUser.repetitionCount = 0;
+                await cardFromUser.save();
+            }
+            while (dto.grade < 5 && cardFromUser.repetitionCount < 2) {
+                showAgain = true;
+
+            }
+        }
+        if (cardFromUser.repetitionNumber > 0) {
+            if (dto.grade < 3) {
+                cardFromUser.isHard = true;
+                cardFromUser.repetitionCount = 0;
+                await cardFromUser.save();
+            }
+            while (dto.grade < 5 && cardFromUser.repetitionCount < 1) {
+                showAgain = true;
+
+            }
+        }
+
         cardFromUser.grade = dto.grade;
         cardFromUser.repetitionCount++;
         cardFromUser.totalRepetitionCount++;
-
         await cardFromUser.save();
-        return this.decideNextStep(cardFromUser, dto.grade);
-    }
-
-    async decideNextStep(cardFromUser: CurrentLessonCards, grade: number) {
-
-        let showAgain = false;
-        if (grade < 5 && cardFromUser.repetitionNumber === 0 && cardFromUser.repetitionCount <= Number(process.env.MIN_REPEAT_PER_FIRST_DAY)) {
-            showAgain = true;
-        } else {
-            if (grade < 5 && cardFromUser.repetitionNumber !== 0 && cardFromUser.repetitionCount <= Number(process.env.MIN_REPEAT_PER_DAY)) {
-                showAgain = true;
-            }
-        }
         return await this.decideLastStep(showAgain, cardFromUser);
 
     }
 
     async decideLastStep(showAgain: boolean, cardFromUser: CurrentLessonCards) {
         if (showAgain) {
-            return this.changeCardPositionOrRemove(cardFromUser);
+            return this.changeCardPosition(cardFromUser);
         } else {
             if (cardFromUser.isNew) {
                 cardFromUser.isNew = false;
                 await cardFromUser.save();
             }
             cardFromUser.repetitionNumber++;
-            cardFromUser.grade = cardFromUser.grade / cardFromUser.repetitionCount;
+            cardFromUser.grade = Math.floor(cardFromUser.grade / cardFromUser.repetitionCount);
             await cardFromUser.save();
-            const userId = cardFromUser.UserCardsId;
-            const updatingCard = await this.userCardsRepository.findOne({ where: { id: userId } });
-            const currentCard = await this.currentLessonRepository.findOne({ where: { id: cardFromUser.id } });
+            const userCardId = cardFromUser.UserCardsId;
+            const updatingCard = await this.userCardsRepository.findOne({ where: { id: userCardId } });
+
             await updatingCard.update({
-                grade: currentCard.grade,
-                totalRepetitionCount: currentCard.totalRepetitionCount,
-                repetitionNumber: currentCard.repetitionNumber
+                grade: cardFromUser.grade,
+                isHard: cardFromUser.isHard,
+                totalRepetitionCount: cardFromUser.totalRepetitionCount,
+                repetitionNumber: cardFromUser.repetitionNumber
             });
-            await currentCard.destroy();
-            return this.userCardsService.calculateCards(updatingCard.id);
+            await cardFromUser.destroy();
+            return this.userCardsService.calculateCards(userCardId);
         }
     }
 
 
-    async changeCardPositionOrRemove(cardForRepeat: CurrentLessonCards) {
-        const cardPosition = await this.currentLessonRepository.findAll({ order: [["position", "ASC"]] });
+    async changeCardPosition(cardForRepeat: CurrentLessonCards) {
+        const cardsToMove = await this.currentLessonRepository.findAll({
+            where: {
+                position: { [Op.lte]: Number(process.env.POSITION_FOR_REPEAT) },
+                id: { [Op.ne]: cardForRepeat.id }
+            },
+            order: [["position", "ASC"]]
+        });
 
-        for (const card of cardPosition) {
-            if (card.position >= Number(process.env.POSITION_FOR_REPEAT)) {
-                if (card.id !== cardForRepeat.id) {
-                    await card.update({ position: card.position + 1 });
-                }
-            }
+        await cardForRepeat.update({ position: null });
+        for (const card of cardsToMove) {
+            await card.update({ position: card.position - 1 });
         }
+
+        // Обновляем позицию целевой карте
         await cardForRepeat.update({ position: Number(process.env.POSITION_FOR_REPEAT) });
     }
 }

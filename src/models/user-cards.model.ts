@@ -105,6 +105,13 @@ export class UserCards extends Model<UserCards> {
     }
     @Column({type: DataType.BOOLEAN})
     isNew: boolean
+    @BeforeCreate
+    static  setDefaultFlagHard(model: UserCards) {
+
+        model.isHard = false
+    }
+    @Column({type: DataType.BOOLEAN})
+    isHard: boolean
 
 
 

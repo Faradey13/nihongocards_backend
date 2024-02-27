@@ -27,16 +27,19 @@ export class UsersService {
     try {
         const cards = await this.cardsRepository.findAll()
 
+
         const userCardData = cards.map((card) => ({
             userId: user.id,
             cardId: card.id
         }));
-       const newCards = userCardData.map((data) => this.userCardsRepository.build(data))
 
-        await this.userCardsRepository.create(newCards);
+        for (const data of userCardData) {
+            const newCard = this.userCardsRepository.build(data);
+            await newCard.save();
+        }
 
     } catch (e) {
-      throw new HttpException(`Ошибка: ${e.message}`, HttpStatus.INTERNAL_SERVER_ERROR )
+      throw new HttpException(`Ошибка добавления карт пользователю: ${e.message}`, HttpStatus.INTERNAL_SERVER_ERROR )
     }
       return user
   }

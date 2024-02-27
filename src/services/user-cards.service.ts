@@ -26,17 +26,26 @@ export class UserCardsService {
                 cards.forEach(card => {
                     userCardData.push({
                         userId: user.id,
-                        cardId: card.id
+                        cardId: card.id,
+                        category: card.category
                     })
                 })
             })
-            const userCards = userCardData.map(data => this.userCardsRepository.build(data));
-            await Promise.all(userCards.map(userCard => {
-                if(!userCard.cardId && !userCard.userId){
-                    userCard.save();
-                } else {
-                    console.log(`пара карта ${userCard.cardId} и пользователь ${userCard.userId} уже существует, пропуск`)
-                }
+
+
+
+
+            await Promise.all(userCardData.map(data => {
+
+                // const exitingCards =  this.userCardsRepository.findOne({where:{
+                //     userId:data.userId, cardId: data.cardId
+                //     }})
+                // if(!exitingCards){
+                    const newCard = this.userCardsRepository.build(data)
+                    newCard.save()
+                // } else {
+                //     console.log(`пара карта ${data.cardId} и пользователь ${data.userId} уже существует, пропуск`)
+                // }
 
             }));
 
@@ -53,14 +62,17 @@ export class UserCardsService {
         if (!currentCard) {
             throw new Error(`Карточка с id ${id} не найдена`);
         }
+        if(currentCard.isHard){
+            currentCard.interval = 1
+        }
         if (grade < 0 || grade > 5) {
             console.error("Оценка должна быть в диапазоне от 0 до 5");
             return;
         }
         if (grade >= 3) {
-            if (currentCard.repetitionNumber === 0) {
+            if (currentCard.repetitionNumber === 1) {
                 currentCard.interval = 1;
-            } else if (currentCard.interval === 1) {
+            } else if (currentCard.interval === 2) {
                 currentCard.interval = 3;
             } else {
                 currentCard.factorOfEasiness = Math.max(Number(process.env.MAX_FOE), currentCard.factorOfEasiness + (Number(process.env.GRADE_MULTIPLIER) - (5 - grade) * (Number(process.env.GRADE_MULTIPLIER) + (5 - grade) * Number(process.env.GRADE_FACTOR_MULTIPLIER))));
@@ -68,7 +80,7 @@ export class UserCardsService {
             }
             currentCard.repetitionNumber++;
         } else {
-            currentCard.repetitionNumber = 0;
+
             currentCard.interval = 1;
 
         }
@@ -88,27 +100,34 @@ export class UserCardsService {
             where: {
                 userId: dto.userId,
                 isNew: true,
-                category: dto.category || undefined
+                // category: dto.category || undefined
 
             },
             limit: dto.newLimit
         });
+
         const repetitionCards = await this.userCardsRepository.findAll(({
             where: {
                 userId: dto.userId,
-                nextRepetition:  {
-                    [Op.gte] : Sequelize.literal('DATE_NOW'),
-                    [Op.lt] : Sequelize.literal('DATE_NOW + INTERVAL 1 DAY')
-                }
+                // nextRepetition:  {
+                //     [Op.gte] : Sequelize.literal('DATE_NOW'),
+                //     [Op.lt] : Sequelize.literal('DATE_NOW + INTERVAL 1 DAY')
+                // }
             },
             limit: dto.limit
         }));
+
 
         const cardIds = new Set([
             ...newCards.map((userCard) => userCard.cardId),
             ...repetitionCards.map((userCard) => userCard.cardId)
         ]);
 
+        const findCards = await this.cardsRepository.findAll({
+            where: {
+                id: Array.from(cardIds)
+            }
+        });
         return await this.cardsRepository.findAll({
             where: {
                 id: Array.from(cardIds)

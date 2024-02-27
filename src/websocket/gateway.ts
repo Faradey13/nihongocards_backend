@@ -21,17 +21,19 @@ export class AppGateway  {
                 private userCardsService: UserCardsService) {
     }
     handleConnection(client: Socket, ...args: any[]){
+        console.log(args)
         const userIdHeaderValue = client.handshake.headers['user-id'];
+        console.log(userIdHeaderValue)
         const userID = typeof userIdHeaderValue === 'string' ? userIdHeaderValue : userIdHeaderValue[0];
         console.log(`Пользователь ${userID} подключился`);
         this.activeUserConnection.set(userID, client.id);
-        //   args[0].userId
-        // if( this.activeUserConnection.has(userID)){
-        //     this.activeUserConnection.set(userID, client.id)
-        // } else {
-        //     client.emit('ошибка подключения, возможно пользователь уже подключен')
-        //     client.disconnect()
-        // }
+
+        if( this.activeUserConnection.has(userID)){
+            this.activeUserConnection.set(userID, client.id)
+        } else {
+            client.emit('ошибка подключения, возможно пользователь уже подключен')
+            client.disconnect()
+        }
     }
     handleDisconnection(client: Socket) {
         const userId = Array.from(this.activeUserConnection.entries()).find(([value]) => value=== client.id)?.[0]
@@ -54,12 +56,12 @@ export class AppGateway  {
     }
 
     @SubscribeMessage('startLearning')
-    async handleStartLearning(client: Socket, dto: GetCardDto) {
+    async handleStartLearning(client: Socket, dto: string) {
 
-        console.log('Пользователь начал обучение');
+        const dtoObj = JSON.parse(dto)
 
         const today = (new Date());
-        const user = await this.userRepository.findOne({where:{id: dto.userId}})
+        const user = await this.userRepository.findOne({where:{id: dtoObj.userId}})
         const lastLessonUser = user.lastLessonDate
         if (lastLessonUser) {
             const yearDiff = today.getFullYear() - lastLessonUser.getFullYear();
@@ -71,7 +73,7 @@ export class AppGateway  {
                     console.log("Вы долго не учились, рекомендуется сбросить прогресс и начать заново");
                     client.on('resetProgressResponse', async(data) =>{
                         if(data.confirm){
-                            await this.userCardsService.refreshProgress(dto.userId)
+                            await this.userCardsService.refreshProgress(dtoObj.userId)
                         }
                     })
 
@@ -80,7 +82,7 @@ export class AppGateway  {
                     console.log("Вы долго не учились, рекомендуется сбросить прогресс и начать заново")
                     client.on('resetProgressResponse', async(data) =>{
                         if(data.confirm){
-                            await this.userCardsService.refreshProgress(dto.userId)
+                            await this.userCardsService.refreshProgress(dtoObj.userId)
                         }
                     })
                 }
@@ -100,8 +102,8 @@ export class AppGateway  {
 
 
 
-        await this.currentLessonCardsService.startNewLesson(dto)
-        const firstCard = await this.currentLessonCardsService.getFirstCard(dto.userId);
+        await this.currentLessonCardsService.startNewLesson(dtoObj)
+        const firstCard = await this.currentLessonCardsService.getFirstCard(dtoObj.userId);
         client.emit('newCard', firstCard);
     }
     @SubscribeMessage('resetProgressRequest')

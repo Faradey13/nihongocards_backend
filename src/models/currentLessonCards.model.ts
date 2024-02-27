@@ -71,11 +71,14 @@ export class CurrentLessonCards extends Model<CurrentLessonCards> {
     isNew: boolean
 
 
-    @Column({type: DataType.INTEGER, unique: true})
-    position: number
+    @Column({ type: DataType.INTEGER })
+    position: number;
 
     @Column({type: DataType.DATE})
     currentLessonData: Date
+
+    @Column({type: DataType.BOOLEAN})
+    isHard: boolean
 
 
 
