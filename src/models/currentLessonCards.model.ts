@@ -62,13 +62,16 @@ export class CurrentLessonCards extends Model<CurrentLessonCards> {
 
 
 
-    @Column({type: DataType.INTEGER})
+    @Column({type: DataType.FLOAT})
     grade: number
 
 
 
     @Column({type: DataType.BOOLEAN})
     isNew: boolean
+
+    @Column({type: DataType.BOOLEAN})
+    isFront: boolean
 
 
     @Column({ type: DataType.INTEGER })

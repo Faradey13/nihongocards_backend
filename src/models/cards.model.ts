@@ -42,6 +42,9 @@ export class Card extends Model<Card, CardCreationAttrs> {
     @Column({type: DataType.STRING})
     audio: string
 
+    @Column({type: DataType.BOOLEAN})
+    isFront: boolean
+
     @BelongsToMany(() => User, () => UserCards)
     user: User[]
 

@@ -7,11 +7,14 @@ import { InjectModel } from "@nestjs/sequelize";
 import { User } from "../models/users.model";
 import { UserCardsService } from "../services/user-cards.service";
 import { UserCards } from "../models/user-cards.model";
+import { RateCardDto } from "../dto/rateCard.dto";
 
 
-@WebSocketGateway(5001)
+@WebSocketGateway(5001, { transports: ['polling'] })
 export class AppGateway  {
     @WebSocketServer() server: Server
+
+
 
     private activeUserConnection: Map<string,string> = new Map<string, string>()
 
@@ -20,6 +23,8 @@ export class AppGateway  {
                 @InjectModel(UserCards) private userCardsRepository: typeof UserCards,
                 private userCardsService: UserCardsService) {
     }
+
+
     handleConnection(client: Socket, ...args: any[]){
         console.log(args)
         const userIdHeaderValue = client.handshake.headers['user-id'];
@@ -33,35 +38,46 @@ export class AppGateway  {
         } else {
             client.emit('ошибка подключения, возможно пользователь уже подключен')
             client.disconnect()
+            console.log(`Пользователь отключился`);
+
         }
     }
     handleDisconnection(client: Socket) {
         const userId = Array.from(this.activeUserConnection.entries()).find(([value]) => value=== client.id)?.[0]
         if(userId) {
             this.activeUserConnection.delete(userId)
+            console.log(`Пользователь отключился`);
         }
     }
 
     @SubscribeMessage('rateCard')
-    async handleRateCard(client: Socket, dto: string) {
+    async handleRateCard(client: Socket, dto: RateCardDto) {
         console.log('оценка получена', dto)
-        const dtoObj = JSON.parse(dto)
-        const userId = dtoObj.userId
-        console.log(dtoObj)
-        await this.currentLessonCardsService.updateCard(dtoObj)
+
+        const userId = dto.userId
+        console.log(dto)
+        await this.currentLessonCardsService.updateCard(dto)
+        console.log('карты обновлены')
 
         const newCard = await this.currentLessonCardsService.getFirstCard(userId)
 
         client.emit('newCard', newCard)
     }
 
-    @SubscribeMessage('startLearning')
-    async handleStartLearning(client: Socket, dto: string) {
+    @SubscribeMessage('hello')
+    async hello(client: Socket){
+        console.log('world')
+    }
 
-        const dtoObj = JSON.parse(dto)
+    @SubscribeMessage('startLearning')
+    async handleStartLearning(client: Socket, dto: GetCardDto) {
+
+
+
+
 
         const today = (new Date());
-        const user = await this.userRepository.findOne({where:{id: dtoObj.userId}})
+        const user = await this.userRepository.findOne({where:{id: dto.userId}})
         const lastLessonUser = user.lastLessonDate
         if (lastLessonUser) {
             const yearDiff = today.getFullYear() - lastLessonUser.getFullYear();
@@ -73,7 +89,7 @@ export class AppGateway  {
                     console.log("Вы долго не учились, рекомендуется сбросить прогресс и начать заново");
                     client.on('resetProgressResponse', async(data) =>{
                         if(data.confirm){
-                            await this.userCardsService.refreshProgress(dtoObj.userId)
+                            await this.userCardsService.refreshProgress(dto.userId)
                         }
                     })
 
@@ -82,7 +98,7 @@ export class AppGateway  {
                     console.log("Вы долго не учились, рекомендуется сбросить прогресс и начать заново")
                     client.on('resetProgressResponse', async(data) =>{
                         if(data.confirm){
-                            await this.userCardsService.refreshProgress(dtoObj.userId)
+                            await this.userCardsService.refreshProgress(dto.userId)
                         }
                     })
                 }
@@ -102,8 +118,8 @@ export class AppGateway  {
 
 
 
-        await this.currentLessonCardsService.startNewLesson(dtoObj)
-        const firstCard = await this.currentLessonCardsService.getFirstCard(dtoObj.userId);
+        await this.currentLessonCardsService.startNewLesson(dto)
+        const firstCard = await this.currentLessonCardsService.getFirstCard(dto.userId);
         client.emit('newCard', firstCard);
     }
     @SubscribeMessage('resetProgressRequest')

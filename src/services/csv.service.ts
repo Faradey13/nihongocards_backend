@@ -53,6 +53,7 @@ export class CsvService {
             difficulty : Number(record.difficulty),
             image : record.image,
             audio : record.audio,
+            isFront: record.isFront
         }
 
     }

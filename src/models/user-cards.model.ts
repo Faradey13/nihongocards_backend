@@ -34,13 +34,17 @@ export class UserCards extends Model<UserCards> {
     @Column({type: DataType.STRING})
     category: string
 
-    @Column({type: DataType.INTEGER})
+    @BeforeCreate
+    static async setFactor(model: UserCards){
+        model.factorOfEasiness = 2.5
+
+    }
+
+    @Column({type: DataType.FLOAT})
     factorOfEasiness: number
 
     @Column({type: DataType.INTEGER})
     interval: number
-
-
 
 
     @BeforeCreate
@@ -83,7 +87,7 @@ export class UserCards extends Model<UserCards> {
 
     }
 
-    @Column({type: DataType.INTEGER})
+    @Column({type: DataType.FLOAT})
     grade: number
 
 

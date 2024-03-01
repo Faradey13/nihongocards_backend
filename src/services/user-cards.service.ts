@@ -58,6 +58,7 @@ export class UserCardsService {
     async calculateCards(id: number) {
         const currentCard = await this.userCardsRepository.findByPk(id);
         const grade = currentCard.grade
+        console.log(`старт расчета интервала ${currentCard}`)
 
         if (!currentCard) {
             throw new Error(`Карточка с id ${id} не найдена`);
@@ -72,7 +73,7 @@ export class UserCardsService {
         if (grade >= 3) {
             if (currentCard.repetitionNumber === 1) {
                 currentCard.interval = 1;
-            } else if (currentCard.interval === 2) {
+            } else if (currentCard.repetitionNumber === 2) {
                 currentCard.interval = 3;
             } else {
                 currentCard.factorOfEasiness = Math.max(Number(process.env.MAX_FOE), currentCard.factorOfEasiness + (Number(process.env.GRADE_MULTIPLIER) - (5 - grade) * (Number(process.env.GRADE_MULTIPLIER) + (5 - grade) * Number(process.env.GRADE_FACTOR_MULTIPLIER))));

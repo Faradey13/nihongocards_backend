@@ -126,7 +126,17 @@ export class CurrentLessonCardsService {
 
 
     async updateCard(dto: RateCardDto) {
+        console.log(`карта на оценку${ dto }`)
+        console.log(typeof dto)
         const cardFromUser = await this.currentLessonRepository.findOne({ where: { cardId: dto.cardId, userId: dto.userId } });
+        cardFromUser.grade = dto.grade;
+        cardFromUser.repetitionCount++;
+        cardFromUser.totalRepetitionCount++;
+        await cardFromUser.save();
+        console.log(cardFromUser.repetitionNumber)
+        console.log(cardFromUser.grade)
+        console.log(cardFromUser.repetitionCount)
+
 
 
         let showAgain = false;
@@ -135,8 +145,10 @@ export class CurrentLessonCardsService {
                 cardFromUser.repetitionCount = 0;
                 await cardFromUser.save();
             }
-            while (dto.grade < 5 && cardFromUser.repetitionCount < 2) {
+            if (dto.grade < 5 || cardFromUser.repetitionCount < 3) {
                 showAgain = true;
+                console.log(dto.grade < 5 && cardFromUser.repetitionCount < 3)
+                console.log(cardFromUser.repetitionCount)
 
             }
         }
@@ -146,16 +158,13 @@ export class CurrentLessonCardsService {
                 cardFromUser.repetitionCount = 0;
                 await cardFromUser.save();
             }
-            while (dto.grade < 5 && cardFromUser.repetitionCount < 1) {
+            if (dto.grade < 5 && cardFromUser.repetitionCount < 2) {
                 showAgain = true;
 
             }
         }
+        console.log(showAgain)
 
-        cardFromUser.grade = dto.grade;
-        cardFromUser.repetitionCount++;
-        cardFromUser.totalRepetitionCount++;
-        await cardFromUser.save();
         return await this.decideLastStep(showAgain, cardFromUser);
 
     }
@@ -173,14 +182,21 @@ export class CurrentLessonCardsService {
             await cardFromUser.save();
             const userCardId = cardFromUser.UserCardsId;
             const updatingCard = await this.userCardsRepository.findOne({ where: { id: userCardId } });
+            console.log(`до обновления ${updatingCard}`)
+            console.log(updatingCard)
+
 
             await updatingCard.update({
                 grade: cardFromUser.grade,
                 isHard: cardFromUser.isHard,
+                isNew: cardFromUser.isNew,
                 totalRepetitionCount: cardFromUser.totalRepetitionCount,
                 repetitionNumber: cardFromUser.repetitionNumber
             });
-            await cardFromUser.destroy();
+            console.log(`после обновления ${updatingCard}`)
+            console.log(updatingCard)
+            console.log(cardFromUser)
+            await this.destroyCard(cardFromUser)
             return this.userCardsService.calculateCards(userCardId);
         }
     }
@@ -200,7 +216,20 @@ export class CurrentLessonCardsService {
             await card.update({ position: card.position - 1 });
         }
 
-        // Обновляем позицию целевой карте
         await cardForRepeat.update({ position: Number(process.env.POSITION_FOR_REPEAT) });
+    }
+
+    async destroyCard(cardForRemove: CurrentLessonCards) {
+        const cardsToMove = await this.currentLessonRepository.findAll({
+            where: {
+                position: { [Op.gt]: 1 },
+                id: { [Op.ne]: cardForRemove.id }
+            },
+            order: [["position", "ASC"]]
+        });
+        await cardForRemove.destroy()
+        for (const card of cardsToMove) {
+            await card.update({ position: card.position + 1 });
+        }
     }
 }
