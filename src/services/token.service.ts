@@ -2,8 +2,9 @@
 import { TokenDto } from "../dto/token.dto";
 import { Token } from "../models/token.model";
 import { Op } from "sequelize";
-import { JwtService } from "@nestjs/jwt";
+
 import { Injectable } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
 @Injectable()
 export class TokenService {
     constructor(

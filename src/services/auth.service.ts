@@ -2,12 +2,12 @@ import { Body, HttpException, HttpStatus, Injectable, Post, UnauthorizedExceptio
 import * as bcrypt from "bcryptjs";
 import { UsersService } from "./users.service";
 import { CreateUserDto } from "../dto/create-user.dto";
+import { User } from "../models/users.model";
 import * as uuid from "uuid";
 import { MailService } from "./mail.service";
-
+import { TokenService } from "./token.service";
 import { TokenDto } from "../dto/token.dto";
 import { JwtService } from "@nestjs/jwt";
-import { TokenService } from "./token.service";
 
 @Injectable()
 export class AuthService {
@@ -16,8 +16,7 @@ export class AuthService {
     constructor(private userService: UsersService,
                 private mailService: MailService,
                 private tokenService: TokenService,
-                private jwtService : JwtService
-    ) {
+    private jwtService : JwtService,) {
     }
 
     async login(userDto: CreateUserDto) {
@@ -41,27 +40,27 @@ export class AuthService {
         await this.tokenService.saveToken(user.id, tokens.refreshToken)
         return {...tokens, user: tokenDto}
     }
-    // async generateToken(payload: TokenDto) {
-    //     console.log(typeof payload)
-    //     try {
-    //         console.log(this.jwtService.sign(payload, { secret: process.env.PRIVATE_KEY }))
-    //         const accessToken = this.jwtService.sign(payload, { secret: process.env.PRIVATE_KEY });
-    //         console.log('ff')
-    //         const refreshToken = this.jwtService.sign(payload, {
-    //             secret: process.env.PRIVATE_KEY_REFRESH,
-    //             expiresIn: "30d"
-    //         });
-    //         console.log(refreshToken)
-    //
-    //         return {
-    //             accessToken,
-    //             refreshToken
-    //         };
-    //     } catch (e) {
-    //         console.log(e)
-    //     }
-    //
-    // }
+    async generateToken(payload: TokenDto) {
+        console.log(typeof payload)
+        try {
+            console.log(this.jwtService.sign(payload, { secret: process.env.PRIVATE_KEY }))
+            const accessToken = this.jwtService.sign(payload, { secret: process.env.PRIVATE_KEY });
+            console.log('ff')
+            const refreshToken = this.jwtService.sign(payload, {
+                secret: process.env.PRIVATE_KEY_REFRESH,
+                expiresIn: "30d"
+            });
+            console.log(refreshToken)
+
+            return {
+                accessToken,
+                refreshToken
+            };
+        } catch (e) {
+            console.log(e)
+        }
+
+    }
 
     private async validateUser(userDto: CreateUserDto) {
         const user = await this.userService.getUserByEmail(userDto.email);

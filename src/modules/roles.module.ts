@@ -12,7 +12,7 @@ import { JwtModule } from "@nestjs/jwt";
   controllers: [RolesController],
   providers: [RolesService],
   imports: [
-    JwtModule.register({}),
+
     SequelizeModule.forFeature([Role, User, UserRoles])
   ],
   exports: [RolesService]
