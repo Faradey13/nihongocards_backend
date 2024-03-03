@@ -2,6 +2,7 @@ import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from
 import { Observable } from "rxjs";
 import { JwtService } from "@nestjs/jwt";
 
+
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
     constructor(private jwtService :JwtService) {

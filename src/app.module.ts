@@ -18,6 +18,11 @@ import * as path from "path";
 import { CurrentLessonCards } from "./models/currentLessonCards.model";
 import { CurrentLessonCardsModule } from "./modules/currentLessonCards.module";
 import { GatewayModule } from "./modules/gateway.module";
+import { MailModule } from "./modules/mail.module";
+import { TokenModule } from "./modules/token.module";
+import { ScheduleModule } from "@nestjs/schedule";
+import { JwtModule } from "@nestjs/jwt";
+import { Token } from "./models/token.model";
 
 
 
@@ -25,8 +30,10 @@ import { GatewayModule } from "./modules/gateway.module";
   controllers: [],
   providers: [],
   imports: [
+    ScheduleModule.forRoot(),
     ServeStaticModule.forRoot({
-      rootPath: path.join(__dirname,  'static'),
+      rootPath: path.join(__dirname,'..', 'dist', 'static'),
+      exclude: ['/api*'],
     }),
     ConfigModule.forRoot({
       envFilePath: `.${process.env.NODE_ENV}.env`
@@ -38,7 +45,7 @@ import { GatewayModule } from "./modules/gateway.module";
       username: process.env.POSTGRES_USER,
       password: String(process.env.POSTGRESS_PASSWORD),
       database: process.env.POSTGRES_DB,
-      models: [User, Role, UserRoles, Card, UserCards, CurrentLessonCards],
+      models: [User, Role, UserRoles, Card, UserCards, CurrentLessonCards, Token],
       autoLoadModels: true,
 
     }),
@@ -49,7 +56,10 @@ import { GatewayModule } from "./modules/gateway.module";
     FilesModule,
     CsvModule,
     CurrentLessonCardsModule,
-    GatewayModule
+    GatewayModule,
+    MailModule,
+    TokenModule,
+    JwtModule
     
   ],
 })

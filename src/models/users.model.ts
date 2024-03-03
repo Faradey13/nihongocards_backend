@@ -26,6 +26,16 @@ export class User extends Model<User, UserCreationAttrs> {
     @Column({type: DataType.STRING, allowNull: false})
     password: string;
 
+    @Column({type: DataType.STRING})
+    activationLink: string
+
+    @BeforeCreate
+    static async setDefaultActivated(model: User){
+        model.isActivated = false
+    }
+    @Column({type: DataType.BOOLEAN})
+    isActivated: boolean
+
     @ApiProperty({example: true, description:'Забанен или нет'})
     @Column({type: DataType.BOOLEAN, defaultValue: false})
     banned: boolean;

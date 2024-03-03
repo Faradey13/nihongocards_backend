@@ -1,14 +1,16 @@
-import { Body, Controller, Post } from "@nestjs/common";
+import { Body, Controller, Post, Res } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { AuthService } from "../services/auth.service";
 import { CreateUserDto } from "../dto/create-user.dto";
+import { Response } from 'express';
 
 
 @ApiTags('Авторизация')
 @Controller('auth')
 export class AuthController {
 
-  constructor(private authService: AuthService) {
+  constructor(private authService: AuthService
+              ) {
   }
   @Post('/Login')
   login(@Body() userDto: CreateUserDto){
@@ -16,7 +18,14 @@ export class AuthController {
   }
 
   @Post('/registration')
-  registration(@Body() userDto: CreateUserDto){
-    return this.authService.registration(userDto)
+  async registration(@Body() userDto: CreateUserDto, @Res() res: Response){
+    try {
+      const UserData = await this.authService.registration(userDto)
+      res.cookie('refreshToken', UserData.refreshToken, {httpOnly: true, maxAge: 30*24*60*60*1000})
+      return res.json(UserData)
+    } catch (e) {
+      console.log(e)
+    }
+
   }
 }

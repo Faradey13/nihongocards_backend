@@ -9,6 +9,8 @@ import { Card } from "../models/cards.model";
 import { AuthModule } from "./auth.module";
 import { RolesModule } from "./roles.module";
 import { UserCards } from "../models/user-cards.model";
+import { JwtModule } from "@nestjs/jwt";
+
 
 
 
@@ -17,9 +19,11 @@ import { UserCards } from "../models/user-cards.model";
   controllers: [UsersController],
   providers: [UsersService],
   imports: [
+    JwtModule.register({}),
     SequelizeModule.forFeature([User, Card, Role, UserCards, UserRoles]),
     forwardRef(()=> AuthModule),
     RolesModule,
+
 
 
   ],

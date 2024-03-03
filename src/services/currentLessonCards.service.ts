@@ -126,17 +126,20 @@ export class CurrentLessonCardsService {
 
 
     async updateCard(dto: RateCardDto) {
-        console.log(`карта на оценку${ dto }`)
-        console.log(typeof dto)
-        const cardFromUser = await this.currentLessonRepository.findOne({ where: { cardId: dto.cardId, userId: dto.userId } });
-        cardFromUser.grade = dto.grade;
+
+        const cardFromUser = await this.currentLessonRepository.findOne({
+            where: {
+                cardId: dto.cardId,
+                userId: dto.userId
+            }
+        });
+        cardFromUser.grade = cardFromUser.grade+dto.grade;
         cardFromUser.repetitionCount++;
         cardFromUser.totalRepetitionCount++;
         await cardFromUser.save();
-        console.log(cardFromUser.repetitionNumber)
-        console.log(cardFromUser.grade)
-        console.log(cardFromUser.repetitionCount)
-
+        console.log(cardFromUser.repetitionNumber);
+        console.log(cardFromUser.grade);
+        console.log(cardFromUser.repetitionCount);
 
 
         let showAgain = false;
@@ -145,10 +148,9 @@ export class CurrentLessonCardsService {
                 cardFromUser.repetitionCount = 0;
                 await cardFromUser.save();
             }
-            if (dto.grade < 5 || cardFromUser.repetitionCount < 3) {
+            if (dto.grade < 5 || cardFromUser.repetitionCount < 2) {
                 showAgain = true;
-                console.log(dto.grade < 5 && cardFromUser.repetitionCount < 3)
-                console.log(cardFromUser.repetitionCount)
+
 
             }
         }
@@ -158,12 +160,12 @@ export class CurrentLessonCardsService {
                 cardFromUser.repetitionCount = 0;
                 await cardFromUser.save();
             }
-            if (dto.grade < 5 && cardFromUser.repetitionCount < 2) {
+            if (dto.grade < 5 && cardFromUser.repetitionCount < 1) {
                 showAgain = true;
 
             }
         }
-        console.log(showAgain)
+        console.log(showAgain);
 
         return await this.decideLastStep(showAgain, cardFromUser);
 
@@ -178,12 +180,12 @@ export class CurrentLessonCardsService {
                 await cardFromUser.save();
             }
             cardFromUser.repetitionNumber++;
-            cardFromUser.grade = Math.floor(cardFromUser.grade / cardFromUser.repetitionCount);
+            cardFromUser.grade = cardFromUser.grade / cardFromUser.repetitionCount;
             await cardFromUser.save();
             const userCardId = cardFromUser.UserCardsId;
             const updatingCard = await this.userCardsRepository.findOne({ where: { id: userCardId } });
-            console.log(`до обновления ${updatingCard}`)
-            console.log(updatingCard)
+            console.log(`до обновления ${updatingCard}`);
+            console.log(updatingCard);
 
 
             await updatingCard.update({
@@ -193,17 +195,20 @@ export class CurrentLessonCardsService {
                 totalRepetitionCount: cardFromUser.totalRepetitionCount,
                 repetitionNumber: cardFromUser.repetitionNumber
             });
-            console.log(`после обновления ${updatingCard}`)
-            console.log(updatingCard)
-            console.log(cardFromUser)
-            await this.destroyCard(cardFromUser)
+            console.log(`после обновления ${updatingCard}`);
+            console.log(updatingCard);
+            console.log(cardFromUser);
+            await this.destroyCard(cardFromUser);
             return this.userCardsService.calculateCards(userCardId);
         }
     }
 
 
     async changeCardPosition(cardForRepeat: CurrentLessonCards) {
-        const cardsToMove = await this.currentLessonRepository.findAll({
+        const remainsCards = await this.currentLessonRepository.findAll({where:{
+            id:{[Op.ne]: cardForRepeat.id}
+            }})
+        const targetPosition = await this.currentLessonRepository.findAll({
             where: {
                 position: { [Op.lte]: Number(process.env.POSITION_FOR_REPEAT) },
                 id: { [Op.ne]: cardForRepeat.id }
@@ -211,13 +216,21 @@ export class CurrentLessonCardsService {
             order: [["position", "ASC"]]
         });
 
-        await cardForRepeat.update({ position: null });
-        for (const card of cardsToMove) {
-            await card.update({ position: card.position - 1 });
-        }
+        if (await this.currentLessonRepository.count() > 7) {
+            await cardForRepeat.update({ position: null });
+            for (const card of targetPosition) {
+                await card.update({ position: card.position - 1 });
+            }
 
-        await cardForRepeat.update({ position: Number(process.env.POSITION_FOR_REPEAT) });
+            await cardForRepeat.update({ position: Number(process.env.POSITION_FOR_REPEAT) });
+        } else {
+            for (const card of remainsCards) {
+                await card.update({ position: card.position - 1 });
+            }
+            await cardForRepeat.update({ position: await this.currentLessonRepository.count()});
+        }
     }
+
 
     async destroyCard(cardForRemove: CurrentLessonCards) {
         const cardsToMove = await this.currentLessonRepository.findAll({
@@ -227,9 +240,9 @@ export class CurrentLessonCardsService {
             },
             order: [["position", "ASC"]]
         });
-        await cardForRemove.destroy()
+        await cardForRemove.destroy();
         for (const card of cardsToMove) {
-            await card.update({ position: card.position + 1 });
+            await card.update({ position: card.position - 1 });
         }
     }
 }

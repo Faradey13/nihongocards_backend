@@ -1,4 +1,10 @@
-import { SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
+import {
+    OnGatewayConnection,
+    OnGatewayDisconnect,
+    SubscribeMessage,
+    WebSocketGateway,
+    WebSocketServer
+} from "@nestjs/websockets";
 import { Server, Socket } from 'socket.io';
 import { CurrentLessonCardsService } from "../services/currentLessonCards.service";
 import { GetCardDto } from "../dto/getCard.dto";
@@ -11,7 +17,13 @@ import { RateCardDto } from "../dto/rateCard.dto";
 
 
 @WebSocketGateway(5001, { transports: ['polling'] })
-export class AppGateway  {
+export class AppGateway  implements OnGatewayDisconnect, OnGatewayConnection{
+    handleDisconnect(client: Socket) {
+        this.handleDisconnection(client);
+    }
+    handleConnect(client: Socket) {
+        this.handleConnection(client);
+    }
     @WebSocketServer() server: Server
 
 
@@ -26,7 +38,7 @@ export class AppGateway  {
 
 
     handleConnection(client: Socket, ...args: any[]){
-        console.log(args)
+
         const userIdHeaderValue = client.handshake.headers['user-id'];
         console.log(userIdHeaderValue)
         const userID = typeof userIdHeaderValue === 'string' ? userIdHeaderValue : userIdHeaderValue[0];
@@ -71,9 +83,6 @@ export class AppGateway  {
 
     @SubscribeMessage('startLearning')
     async handleStartLearning(client: Socket, dto: GetCardDto) {
-
-
-
 
 
         const today = (new Date());

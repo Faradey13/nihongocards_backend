@@ -73,16 +73,20 @@ export class UserCardsService {
         if (grade >= 3) {
             if (currentCard.repetitionNumber === 1) {
                 currentCard.interval = 1;
+                await currentCard.save();
             } else if (currentCard.repetitionNumber === 2) {
                 currentCard.interval = 3;
+                await currentCard.save();
             } else {
                 currentCard.factorOfEasiness = Math.max(Number(process.env.MAX_FOE), currentCard.factorOfEasiness + (Number(process.env.GRADE_MULTIPLIER) - (5 - grade) * (Number(process.env.GRADE_MULTIPLIER) + (5 - grade) * Number(process.env.GRADE_FACTOR_MULTIPLIER))));
                 currentCard.interval = Math.round(currentCard.interval * currentCard.factorOfEasiness);
+                await currentCard.save();
             }
             currentCard.repetitionNumber++;
         } else {
 
             currentCard.interval = 1;
+            await currentCard.save();
 
         }
         const today = new Date();
