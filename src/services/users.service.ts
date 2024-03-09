@@ -52,6 +52,11 @@ export class UsersService {
     return await this.userRepository.findOne({where: {email}, include: { all: true}})
   }
 
+  async geUserById(id:number) {
+      return await this.userRepository.findByPk(id)
+  }
+
+
   async addRole(dto: AddRoleDto) {
     const user = await this.userRepository.findByPk(dto.userID)
     const role = await this.roleService.getRoleByValue(dto.value)

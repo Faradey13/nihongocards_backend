@@ -4,16 +4,18 @@ import { Card } from "../models/cards.model";
 import * as csvParser from 'csv-parser';
 import * as fs from "fs";
 import { InjectModel } from "@nestjs/sequelize";
+import { UserCardsService } from "./user-cards.service";
 
 
 @Injectable()
 export class CsvService {
     constructor(
-      @InjectModel(Card)
-      private cardRepository: typeof Card
+      @InjectModel(Card) private cardRepository: typeof Card,
+      private userCardsService: UserCardsService
     ) {}
 
     async loadCsvData(filePath: string): Promise<void> {
+        console.log(filePath)
         const records: Card[] = [];
 
         fs.createReadStream(filePath)
@@ -31,6 +33,7 @@ export class CsvService {
 
               try {
                   await this.cardRepository.bulkCreate(records);
+                  await this.userCardsService.addCardsToUsers()
               } catch (e) {
                   console.log(e.message)
               }

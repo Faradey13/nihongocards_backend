@@ -1,5 +1,5 @@
 
-import { Module } from "@nestjs/common";
+import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { SequelizeModule } from "@nestjs/sequelize";
 import { User } from "./models/users.model";
@@ -18,16 +18,25 @@ import * as path from "path";
 import { CurrentLessonCards } from "./models/currentLessonCards.model";
 import { CurrentLessonCardsModule } from "./modules/currentLessonCards.module";
 import { GatewayModule } from "./modules/gateway.module";
+import { TokenModule } from './modules/token.module';
+
+import { MailModule } from "./modules/mail.module";
+import { Token } from "./models/token.model";
+import { ScheduleModule } from "@nestjs/schedule";
+import { TaskService } from "./services/task.service";
+import { LoggerMiddleware } from "./midlewares/Logger";
+
 
 
 
 @Module({
   controllers: [],
-  providers: [],
+  providers: [TaskService],
   imports: [
     ServeStaticModule.forRoot({
       rootPath: path.join(__dirname,  'static'),
     }),
+    ScheduleModule.forRoot(),
     ConfigModule.forRoot({
       envFilePath: `.${process.env.NODE_ENV}.env`
     }),
@@ -38,10 +47,11 @@ import { GatewayModule } from "./modules/gateway.module";
       username: process.env.POSTGRES_USER,
       password: String(process.env.POSTGRESS_PASSWORD),
       database: process.env.POSTGRES_DB,
-      models: [User, Role, UserRoles, Card, UserCards, CurrentLessonCards],
+      models: [User, Role, UserRoles, Card, UserCards, CurrentLessonCards, Token],
       autoLoadModels: true,
 
     }),
+    TokenModule,
     UsersModule,
     RolesModule,
     AuthModule,
@@ -49,8 +59,16 @@ import { GatewayModule } from "./modules/gateway.module";
     FilesModule,
     CsvModule,
     CurrentLessonCardsModule,
-    GatewayModule
+    GatewayModule,
+    MailModule,
+
     
-  ],
+  ]
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(LoggerMiddleware)
+      .forRoutes('*'); // Middleware будет применяться ко всем маршрутам
+  }
+}

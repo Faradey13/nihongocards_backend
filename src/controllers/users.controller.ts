@@ -1,4 +1,16 @@
-import { Body, Controller, Get, Post, UseGuards, UsePipes } from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    Get,
+    HttpException,
+    HttpStatus,
+    Param,
+    Post,
+    Req,
+    Res,
+    UseGuards,
+    UsePipes
+} from "@nestjs/common";
 import { ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { UsersService } from "../services/users.service";
 import { User } from "../models/users.model";
@@ -33,6 +45,25 @@ export class UsersController {
 
         return this.usersService.getAllUsers()
     }
+
+    @ApiOperation({summary: 'Получение пользователя по id и отправка его данных на клиент'})
+    @ApiResponse({status: 200, type: [User]})
+    @Get(`/:id`)
+    async getUser( @Param('id') id: number) {
+        try {
+            const user =    await this.usersService.geUserById(id);
+            console.log(user.dataValues)
+            return user.dataValues
+
+
+
+        } catch (error) {
+            throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+        }
+    }
+
+
+
     @ApiOperation({summary: 'Выдать роль'})
     @ApiResponse({status: 200})
     @Roles("ADMIN")

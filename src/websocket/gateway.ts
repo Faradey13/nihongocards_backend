@@ -10,7 +10,7 @@ import { UserCards } from "../models/user-cards.model";
 import { RateCardDto } from "../dto/rateCard.dto";
 
 
-@WebSocketGateway(5001, { transports: ['polling'] })
+@WebSocketGateway(5002, { transports: ['polling'] })
 export class AppGateway  {
     @WebSocketServer() server: Server
 

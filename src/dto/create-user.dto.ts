@@ -10,4 +10,6 @@ export class CreateUserDto {
   @IsString({message: 'неверные параметры ввода'})
   @Length(4, 16, {message : 'не меньше 4 не больше 16'})
   readonly password: string;
+
+  readonly activationLink: string
 }

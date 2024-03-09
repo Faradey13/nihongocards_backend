@@ -26,6 +26,18 @@ export class User extends Model<User, UserCreationAttrs> {
     @Column({type: DataType.STRING, allowNull: false})
     password: string;
 
+    @BeforeCreate
+    static async setDefaultActivated(model: User){
+        model.isActivated = false
+    }
+    @ApiProperty({example:true, description: 'активирован или нет акаунт'})
+    @Column({type: DataType.BOOLEAN})
+    isActivated: boolean
+
+    @ApiProperty({example:'sdfsf3-242-dsfsf', description:'уникальная строка для активации акаунта'})
+    @Column({type: DataType.STRING})
+    activationLink: string
+
     @ApiProperty({example: true, description:'Забанен или нет'})
     @Column({type: DataType.BOOLEAN, defaultValue: false})
     banned: boolean;
@@ -34,6 +46,7 @@ export class User extends Model<User, UserCreationAttrs> {
     @Column({type: DataType.STRING, allowNull: true})
     banReason: string;
 
+    @ApiProperty({example:new Date(), description: 'дата последнего урока'})
     @Column({type: DataType.DATE})
     lastLessonDate: Date;
 

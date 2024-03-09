@@ -7,7 +7,8 @@ export class FilesService {
 
     async createFile(file): Promise<any> {
         let filePath
-        if (typeof file === "object") {
+        console.log(file)
+        if (file.files) {
             const arrFromObj = file.files
             if (arrFromObj.length > 0) {
                 arrFromObj.map(file => {
@@ -42,7 +43,7 @@ export class FilesService {
 
 
                 if ((path.extname(file[0].originalname) === '.png' || path.extname(file[0].originalname)) === '.jpg' || path.extname(file[0].originalname) === '.gif') {
-                    filePath = path.resolve(__dirname, '..', 'static/image')
+                    filePath = path.resolve(__dirname, '..', '/static/image')
 
                 } else {
                     filePath = path.resolve(__dirname, '..', 'static/audio')

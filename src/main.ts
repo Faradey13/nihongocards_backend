@@ -4,7 +4,7 @@ import {NestFactory} from "@nestjs/core";
 import {AppModule} from "./app.module";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "./util/pipes/validation.pipe";
-import * as cors from 'cors';
+import * as cookieParser from 'cookie-parser'
 import { IoAdapter } from '@nestjs/platform-socket.io';
 
 class MyIoAdapter extends IoAdapter {
@@ -36,6 +36,8 @@ async function bootstrap() {
 
     const document = SwaggerModule.createDocument(app, config);
     SwaggerModule.setup('/api/docs', app, document);
+
+    app.use(cookieParser());
 
 
     app.useGlobalPipes(new ValidationPipe());
