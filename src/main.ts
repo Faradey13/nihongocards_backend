@@ -6,6 +6,10 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { ValidationPipe } from "./util/pipes/validation.pipe";
 import * as cookieParser from 'cookie-parser'
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { FastifyAdapter } from "@nestjs/platform-fastify";
+import fastifyCookie from "@fastify/cookie";
+
+
 
 class MyIoAdapter extends IoAdapter {
     createIOServer(port: number, options?: any): any {
@@ -22,7 +26,7 @@ class MyIoAdapter extends IoAdapter {
     }
 }
 async function bootstrap() {
-    const app = await NestFactory.create(AppModule);
+    const app = await NestFactory.create(AppModule, new FastifyAdapter());
 
     app.useWebSocketAdapter(new MyIoAdapter(app));
 
@@ -38,6 +42,8 @@ async function bootstrap() {
     SwaggerModule.setup('/api/docs', app, document);
 
     app.use(cookieParser());
+    await app.getHttpAdapter().getInstance().register(fastifyCookie)
+
 
 
     app.useGlobalPipes(new ValidationPipe());

@@ -2,29 +2,34 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { SequelizeModule } from "@nestjs/sequelize";
-import { User } from "./models/users.model";
-import { Role } from "./models/roles.model";
-import { UserRoles } from "./models/user-roles.model";
-import { Card } from "./models/cards.model";
-import { UserCards } from "./models/user-cards.model";
-import { UsersModule } from "./modules/users.module";
-import { RolesModule } from "./modules/roles.module";
-import { AuthModule } from "./modules/auth.module";
-import { CardsModule } from "./modules/cards.module";
-import { FilesModule } from "./modules/files.module";
-import { CsvModule } from "./modules/csv.module";
+import { User } from "./users/users.model";
+import { Role } from "./roles/roles.model";
+import { UserRoles } from "./roles/user-roles.model";
+import { Card } from "./cards/cards.model";
+import { UserCards } from "./user-cards/user-cards.model";
+import { UsersModule } from "./users/users.module";
+import { RolesModule } from "./roles/roles.module";
+import { AuthModule } from "./auth/auth.module";
+import { CardsModule } from "./cards/cards.module";
+import { FilesModule } from "./files/files.module";
+import { CsvModule } from "./csv/csv.module";
 import { ServeStaticModule } from "@nestjs/serve-static";
 import * as path from "path";
-import { CurrentLessonCards } from "./models/currentLessonCards.model";
-import { CurrentLessonCardsModule } from "./modules/currentLessonCards.module";
-import { GatewayModule } from "./modules/gateway.module";
-import { TokenModule } from './modules/token.module';
+import { CurrentLessonCards } from "./currentLessonCards/currentLessonCards.model";
+import { CurrentLessonCardsModule } from "./currentLessonCards/currentLessonCards.module";
+import { GatewayModule } from "./socket/gateway.module";
+import { TokenModule } from './token/token.module';
 
-import { MailModule } from "./modules/mail.module";
-import { Token } from "./models/token.model";
+import { MailModule } from "./mail/mail.module";
+import { Token } from "./token/token.model";
 import { ScheduleModule } from "@nestjs/schedule";
-import { TaskService } from "./services/task.service";
+import { TaskService } from "./tasks/task.service";
 import { LoggerMiddleware } from "./midlewares/Logger";
+import { ApolloDriver, ApolloDriverConfig } from "@nestjs/apollo";
+import { GraphQLModule } from "@nestjs/graphql";
+import { join } from "path";
+import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
+
 
 
 
@@ -33,6 +38,13 @@ import { LoggerMiddleware } from "./midlewares/Logger";
   controllers: [],
   providers: [TaskService],
   imports: [
+    GraphQLModule.forRoot<ApolloDriverConfig>({
+      driver: ApolloDriver,
+      playground:false,
+      plugins: [ApolloServerPluginLandingPageLocalDefault()],
+      autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
+      sortSchema: true,
+    }),
     ServeStaticModule.forRoot({
       rootPath: path.join(__dirname,  'static'),
     }),

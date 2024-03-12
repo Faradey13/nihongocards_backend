@@ -1,0 +1,22 @@
+# ------------------------------------------------------
+# THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+# ------------------------------------------------------
+
+input CreateRoleDto {
+  description: String!
+  value: String!
+}
+
+type Mutation {
+  createRole(input: CreateRoleDto!): Role!
+}
+
+type Query {
+  geRoleByValue(value: String!): Role!
+}
+
+type Role {
+  description: String!
+  id: Int!
+  value: String!
+}
