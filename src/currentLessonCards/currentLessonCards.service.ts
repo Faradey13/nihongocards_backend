@@ -56,7 +56,7 @@ export class CurrentLessonCardsService {
                             userId: dto.userId
                         }
                     }).then(numRows => {
-                        console.log(`Удалено ${numRows} записей`);
+                        console.log(`Удалено ${numRows}записей`);
                     }).catch(error => {
                         console.error("Ошибка удаления записей:", error);
                     });
