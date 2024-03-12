@@ -16,7 +16,7 @@ export class TokenDto {
     readonly id: number;
     @Field()
     @ApiProperty({example: [], description:'массив данных роли'})
-    readonly roles: Role;
+    readonly roles: Role[];
     @Field()
     @ApiProperty({example: true, description:'активирован ли акаунт'})
     @IsBoolean({message: 'true or false'})
