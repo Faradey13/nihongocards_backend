@@ -1,13 +1,11 @@
 import { SubscribeMessage, WebSocketGateway, WebSocketServer } from "@nestjs/websockets";
 import { Server, Socket } from 'socket.io';
-import { CurrentLessonCardsService } from "../currentLessonCards/currentLessonCards.service";
+import { CurrentLessonService } from "../currentLessonCards/currentLessonCards.service";
 import { GetCardDto } from "../currentLessonCards/getCard.dto";
-import sequelize, { Op } from "sequelize";
-import { InjectModel } from "@nestjs/sequelize";
-import { User } from "../users/users.model";
 import { UserCardsService } from "../user-cards/user-cards.service";
-import { UserCards } from "../user-cards/user-cards.model";
 import { RateCardDto } from "../currentLessonCards/rateCard.dto";
+import { PrismaService } from "../prisma/prisma.service";
+import { add } from "date-fns";
 
 
 @WebSocketGateway(5002, { transports: ['polling'] })
@@ -18,9 +16,8 @@ export class AppGateway  {
 
     private activeUserConnection: Map<string,string> = new Map<string, string>()
 
-    constructor(private readonly currentLessonCardsService: CurrentLessonCardsService,
-                @InjectModel(User) private userRepository: typeof User,
-                @InjectModel(UserCards) private userCardsRepository: typeof UserCards,
+    constructor(private readonly currentLessonCardsService: CurrentLessonService,
+                private prisma: PrismaService,
                 private userCardsService: UserCardsService) {
     }
 
@@ -30,6 +27,7 @@ export class AppGateway  {
         const userIdHeaderValue = client.handshake.headers['user-id'];
         console.log(userIdHeaderValue)
         const userID = typeof userIdHeaderValue === 'string' ? userIdHeaderValue : userIdHeaderValue[0];
+        client['userId'] = userID;
         console.log(`Пользователь ${userID} подключился`);
         this.activeUserConnection.set(userID, client.id);
 
@@ -52,16 +50,21 @@ export class AppGateway  {
 
     @SubscribeMessage('rateCard')
     async handleRateCard(client: Socket, dto: RateCardDto) {
-        console.log('оценка получена', dto)
+        console.log('оценка получена', dto.cardId)
 
-        const userId = dto.userId
-        console.log(dto)
-        await this.currentLessonCardsService.updateCard(dto)
+        const userId: number = Number(client['userId'])
+
+        await this.currentLessonCardsService.updateCard(dto, userId)
         console.log('карты обновлены')
 
         const newCard = await this.currentLessonCardsService.getFirstCard(userId)
+        if(newCard) {
+            client.emit('newCard', newCard)
 
-        client.emit('newCard', newCard)
+        } else {
+            client.emit('endLesson', 'вы изучили все карточки на сегодня, увеличте лимиты если хотите учить больше')
+
+        }
     }
 
     @SubscribeMessage('hello')
@@ -72,19 +75,15 @@ export class AppGateway  {
     @SubscribeMessage('startLearning')
     async handleStartLearning(client: Socket, dto: GetCardDto) {
 
-
-
-
-
         const today = (new Date());
-        const user = await this.userRepository.findOne({where:{id: dto.userId}})
+        const user = await this.prisma.user.findUnique({where:{id: dto.userId}})
         const lastLessonUser = user.lastLessonDate
         if (lastLessonUser) {
             const yearDiff = today.getFullYear() - lastLessonUser.getFullYear();
             const monthDiff = today.getMonth() - lastLessonUser.getMonth();
             const dayDiff = today.getDate() - lastLessonUser.getDate();
 
-            if (yearDiff !== 0 || monthDiff !== 0 || dayDiff !== 0) {
+            if (yearDiff !== 0 || monthDiff !== 0 || dayDiff > 2) {
                 if (yearDiff !== 0) {
                     console.log("Вы долго не учились, рекомендуется сбросить прогресс и начать заново");
                     client.on('resetProgressResponse', async(data) =>{
@@ -104,13 +103,15 @@ export class AppGateway  {
                 }
 
                 const dateDiff = today.getTime() - lastLessonUser.getTime();
-                const dayDiff = Math.floor(dateDiff / (1000 * 60 * 60 * 24)); // Разница в днях
+                const dayDiff = Math.floor(dateDiff / (1000 * 60 * 60 * 24));
+                const newDate = add(new Date(), { days: dayDiff });
 
-                await this.userCardsRepository.update({
-                    nextRepetition: sequelize.literal(`nextRepetition + INTERVAL ${dayDiff} DAY`)
-                }, {
+                await this.prisma.userCards.updateMany({
+                    data: {
+                        nextRepetition: newDate
+                    },
                     where: {
-                        nextRepetition: { [Op.not]: null }
+                        nextRepetition: { not: null }
                     }
                 });
             }
@@ -118,9 +119,14 @@ export class AppGateway  {
 
 
 
-        await this.currentLessonCardsService.startNewLesson(dto)
-        const firstCard = await this.currentLessonCardsService.getFirstCard(dto.userId);
-        client.emit('newCard', firstCard);
+        const result = await this.currentLessonCardsService.startNewLesson(dto.userId)
+        if(typeof result === 'string') {
+            client.emit('endLesson', result);
+        } else {
+            const firstCard = await this.currentLessonCardsService.getFirstCard(dto.userId);
+            client.emit('newCard', firstCard);
+        }
+
     }
     @SubscribeMessage('resetProgressRequest')
     async handleResetProgressRequest(client: Socket) {

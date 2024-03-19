@@ -1,26 +1,25 @@
 
-import { Column, DataType, Table, Model, ForeignKey } from "sequelize-typescript";
-import { Role } from "./roles.model";
+import { Field, Int, ObjectType } from "@nestjs/graphql";
 import { User } from "../users/users.model";
-import { ApiProperty } from "@nestjs/swagger";
+import { Role } from "./roles.model";
 
+@ObjectType()
+export class UserRoles {
 
-
-@Table({tableName: 'user_roles', createdAt: false, updatedAt: false})
-export class UserRoles extends Model<UserRoles> {
-
-  @ApiProperty({example: '1', description: 'Уникальный идентификатор'})
-  @Column({type: DataType.INTEGER, unique: true, autoIncrement: true, primaryKey: true})
+  @Field(()=> Int)
   id: number;
 
-  @ApiProperty({example: '1', description: 'Уникальный идентификатор роли'})
-  @ForeignKey(() => Role)
-  @Column({type: DataType.INTEGER})
+
+  @Field(()=> Int)
   roleId: number;
 
-  @ApiProperty({example: '1', description: 'Уникальный идентификатор пользователя'})
-  @ForeignKey(() => User)
-  @Column({type: DataType.INTEGER})
+  @Field(()=> Int)
   UserId: number;
+
+  @Field(() => [User])
+  user: User[];
+
+  @Field(() => [Role])
+  role: Role[];
 
 }

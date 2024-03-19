@@ -1,22 +1,29 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from "@nestjs/sequelize";
 import { Card } from "./cards.model";
 import { FilesService } from "../files/files.service";
 import { CreateCardDto } from "./create-card.dto";
 import { UpdateCardDto } from "../user-cards/update-card.dto";
 import { ApiOperation, ApiResponse } from "@nestjs/swagger";
+import { PrismaService } from "../prisma/prisma.service";
+import { Prisma } from "@prisma/client";
 
 
 @Injectable()
 export class CardsService {
 
-    constructor(@InjectModel(Card) private cardRepository: typeof Card,
-                private fileService: FilesService) {}
-    async createOneCard(dto: CreateCardDto, image: any, audio: any) {
-        const fileNameImage = await this.fileService.createFile(image)
-        const fileNameAudio = await this.fileService.createFile(audio)
-        console.log(fileNameAudio)
-        return await this.cardRepository.create({...dto, image: fileNameImage, audio: fileNameAudio})
+    constructor(
+                private fileService: FilesService,
+                private prisma: PrismaService
+                ) {}
+    async createOneCard(dto: CreateCardDto, image: string, audio: string) {
+        const fileNameImage: string = await this.fileService.createFile(image)
+        const fileNameAudio:string = await this.fileService.createFile(audio)
+        const cardData: Prisma.cardsCreateInput = {
+            ...dto,
+            image: fileNameImage,
+            audio: fileNameAudio
+        };
+        return  this.prisma.cards.create({data: cardData})
     }
 
     @ApiOperation({summary: 'обновить данные карточки'})
@@ -24,16 +31,17 @@ export class CardsService {
     async updateCard(dto:UpdateCardDto) {
         const updateFields = Object.fromEntries(Object.entries(dto).
         filter(([ field]) => field !== undefined))
+        const card = await this.prisma.cards.findUnique({where: {word: dto.word}})
 
-        await this.cardRepository.update(updateFields,
+        await this.prisma.cards.update(
           {where:{
-            word: dto.word
-            }})
+            id: card.id
+            }, data: updateFields})
     }
     @ApiOperation({summary: 'удаление карточки'})
     @ApiResponse({status: 200})
     async removeCard(word: string) {
-        await this.cardRepository.destroy({where:{
+        await this.prisma.cards.delete({where:{
             word: word
             }})
     }

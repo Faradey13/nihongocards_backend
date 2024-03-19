@@ -1,6 +1,7 @@
-import { Field, InputType } from "@nestjs/graphql";
+import { Field, InputType, Int } from "@nestjs/graphql";
 import { ApiProperty } from "@nestjs/swagger";
 import { IsBoolean, IsNumber, IsString } from "class-validator";
+import {roles} from "@prisma/client";
 import { Role } from "../roles/roles.model";
 
 
@@ -10,22 +11,15 @@ export class TokenDto {
     @ApiProperty({example: 'email@email.com', description:'Почта'})
     @IsString({message: 'должно быть строкой'})
     readonly email: string;
-    @Field()
+    @Field(() => Int)
     @ApiProperty({example: 1, description:'уникальный индитификатор '})
     @IsNumber({},{message: 'должно быть числом'})
     readonly id: number;
-    @Field()
+    @Field(()=> [Role])
     @ApiProperty({example: [], description:'массив данных роли'})
-    readonly roles: Role[];
+    readonly roles: roles[];
     @Field()
     @ApiProperty({example: true, description:'активирован ли акаунт'})
     @IsBoolean({message: 'true or false'})
     readonly isActivated: boolean
-
-    constructor(model: TokenDto) {
-        this.id = model.id;
-        this.roles = model.roles;
-        this.email = model.email;
-        this.isActivated = model.isActivated;
-    }
 }

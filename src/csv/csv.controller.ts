@@ -9,8 +9,7 @@ import { RolesGuard } from "../util/guards/role.guard";
 export class CsvController {
     constructor(private readonly csvService: CsvService) {
     }
-    @Roles("ADMIN")
-    @UseGuards(RolesGuard)
+
     @ApiOperation({summary: 'Загрузка таблицы CSV в БД'})
     @ApiResponse({status: 200})
     @Post('/upload_table')

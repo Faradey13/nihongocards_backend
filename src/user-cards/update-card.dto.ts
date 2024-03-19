@@ -1,14 +1,19 @@
-import { Field } from "@nestjs/graphql";
+import { Field, InputType } from "@nestjs/graphql";
 import { ApiProperty } from "@nestjs/swagger";
 import { IsNumber, IsString } from "class-validator";
-
+@InputType()
 export class UpdateCardDto {
+    @Field()
+    @ApiProperty({example: 1, description:'id'})
+    @IsNumber()
+    id: number;
+
     @Field()
     @ApiProperty({example: 'Hello', description:'слово'})
     @IsString({message: 'должно быть строкой'})
     word: string;
 
-    @Field()
+     @Field()
     @ApiProperty({example: 'Привет', description:'перевод'})
     @IsString({message: 'должно быть строкой'})
     translation: string;

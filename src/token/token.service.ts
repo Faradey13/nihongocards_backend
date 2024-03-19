@@ -1,97 +1,104 @@
-import { Injectable } from '@nestjs/common';
-import { Token } from "./token.model";
+import { Injectable } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { TokenDto } from "./tokenDto";
-import { Op } from "sequelize";
-import { InjectModel } from "@nestjs/sequelize";
+import { PrismaService } from "../prisma/prisma.service";
 
 
 @Injectable()
 export class TokenService {
     constructor(
       private jwtService: JwtService,
-      @InjectModel(Token) private userTokenRepository: typeof Token,
-      ) {
+      private prisma: PrismaService
+    ) {
     }
 
     async generateToken(payload: TokenDto) {
-        console.log(payload)
+        console.log(payload);
         try {
             const accessToken = this.jwtService.sign(payload, { secret: process.env.PRIVATE_KEY });
-            console.log(accessToken)
+            console.log(accessToken);
             const refreshToken = this.jwtService.sign(payload, {
                 secret: process.env.PRIVATE_KEY_REFRESH,
                 expiresIn: "30d"
             });
-            console.log(refreshToken)
+            console.log(refreshToken);
 
             return {
                 accessToken,
                 refreshToken
             };
         } catch (e) {
-            console.log(e)
+            console.log(e);
         }
 
     }
 
     async saveToken(userId: number, refreshToken: string) {
-        const tokenData = await this.userTokenRepository.findOne({
+        const tokenData = await this.prisma.token.findFirst({
             where: {
                 userId: userId
             }
-        })
+        });
         if (tokenData) {
-            tokenData.refreshToken = refreshToken
-            return tokenData.save
+            await this.prisma.token.create({
+                data: {
+                    userId: userId,
+                    refreshToken: refreshToken,
+                    dateForRemoving: new Date(new Date().setDate(new Date().getDate() + 30))
+                }
+            });
 
         } else {
-            const newToken =
-              await this.userTokenRepository.create({
-                  userId: userId,
-                  refreshToken: refreshToken,
-                  dateForRemoving: new Date(new Date().setDate(new Date().getDate() + 30)) });
-            return newToken
+
+            return  this.prisma.token.create({
+                  data:
+                    {
+                        userId: userId,
+                        refreshToken: refreshToken,
+                        dateForRemoving: new Date(new Date().setDate(new Date().getDate() + 30))
+                    }
+              });
+
         }
 
     }
 
-    async validateAccessToken(token){
+    async validateAccessToken(token: string) {
         try {
-            return  this.jwtService.verify(token, {secret: process.env.PRIVATE_KEY})
+            return this.jwtService.verify(token, { secret: process.env.PRIVATE_KEY });
 
         } catch (e) {
-            return null
+            return null;
         }
     }
 
-    async validateRefreshToken(token){
+    async validateRefreshToken(token: string) {
         try {
-            return this.jwtService.verify(token, {secret: process.env.PRIVATE_KEY_REFRESH})
+            return this.jwtService.verify(token, { secret: process.env.PRIVATE_KEY_REFRESH });
         } catch (e) {
-            return null
+            return null;
         }
     }
 
     async removeOldToken() {
-       return await this.userTokenRepository.destroy({
+        return  this.prisma.token.deleteMany({
             where: {
-                dateForRemoving: { [Op.lte] : new Date()}
+                dateForRemoving: {lte: new Date() }
             }
         });
     }
 
-    async removeToken(refreshToken) {
-        const token =  await this.userTokenRepository.destroy({where:{refreshToken: refreshToken}})
-        console.log(`удалена ${ token } запись токена`)
-        return token
+    async removeToken(refreshToken: string) {
+        const token = await this.prisma.token.delete({ where: { refreshToken: refreshToken } });
+        console.log(`удалена ${token} запись токена`);
+        return token;
 
     }
 
     async findToken(refreshToken: string) {
-        const tokenData =  await this.userTokenRepository.findOne({where:{refreshToken: refreshToken}})
-        console.log(`найден токен ${ tokenData } `)
-        return tokenData
+        const tokenData = await this.prisma.token.findUnique({ where: { refreshToken: refreshToken } });
+        console.log(`найден токен ${tokenData} `);
+        return tokenData;
 
     }
 }

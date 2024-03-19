@@ -1,20 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { InjectModel } from "@nestjs/sequelize";
-import { Role } from "./roles.model";
 import { CreateRoleDto } from "./create-role.dto";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Injectable()
 export class RolesService {
 
-  constructor(@InjectModel(Role) private roleRepository: typeof Role) {
+  constructor(
+    private prisma: PrismaService
+  ) {
   }
   async createRole(dto:CreateRoleDto) {
-    return  await  this.roleRepository.create(dto)
+    return   this.prisma.roles.create({data: dto})
 
 
   }
   async getRoleByValue(value: string) {
-    return  await this.roleRepository.findOne({where: {value}})
+    return  this.prisma.roles.findFirst({where: {value}})
 
   }
 }

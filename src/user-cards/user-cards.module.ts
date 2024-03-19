@@ -6,13 +6,14 @@ import { UserCardsController } from "./user-cards.controller";
 import { Card } from "../cards/cards.model";
 import { UserCards } from "./user-cards.model";
 import { JwtModule } from "@nestjs/jwt";
+import { PrismaService } from "../prisma/prisma.service";
 
 
 @Module({
-  providers: [UserCardsService],
+  providers: [UserCardsService, PrismaService],
   controllers: [UserCardsController],
   imports: [
-    SequelizeModule.forFeature([User, Card, UserCards]),
+    // SequelizeModule.forFeature([User, Card, UserCards]),
     JwtModule
   ],
   exports: [

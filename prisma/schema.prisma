@@ -1,0 +1,119 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+model user {
+  id    Int     @default(autoincrement()) @id
+  email String  @unique
+  password  String
+  isActivated Boolean @default(false)
+  activationLink String ?
+  banned Boolean @default(false)
+  banReason String ?
+  lastLessonDate DateTime ?
+  newLimit Int @default(5)
+  oldLimit Int @default(10)
+
+  userCards userCards[]
+  userRoles userRoles[]
+  token token []
+  userLimit userLimit []
+  currenLessons currenLesson[]
+}
+
+model cards {
+  id Int     @default(autoincrement()) @id
+  word String @unique
+  translation String
+  example String
+  category String
+  difficulty Int
+  image String
+  audio String
+  isFront Boolean
+  userCards userCards[]
+  currenLessons     currenLesson[]
+}
+
+model userCards {
+  id Int     @default(autoincrement()) @id
+  cardId Int
+  userId Int
+  factorOfEasiness Float @default(2.5)
+  interval Int @default(0)
+  repetitionNumber Int @default(0)
+  repetitionCount Int @default(0)
+  totalRepetitionCount Int @default(0)
+  grade Float @default(0)
+  lastRepetition DateTime ?
+  nextRepetition DateTime ?
+  isNew Boolean @default(true)
+  isHard Boolean @default(false)
+
+  user user @relation(fields: [userId], references: [id])
+  card cards @relation(fields: [cardId], references: [id])
+  currentLeccon currenLesson[]
+}
+
+model currenLesson {
+  id Int @default(autoincrement()) @id
+  userCardsId Int
+  cardId Int
+  userId Int
+  repetitionCount Int
+  grade Int
+  position Int
+  currentLessonData DateTime
+
+  user user @relation(fields: [userId], references: [id])
+  userCards userCards @relation(fields: [userCardsId], references: [id])
+  card cards @relation(fields: [cardId], references: [id])
+
+}
+
+model roles {
+  id Int @default(autoincrement()) @id
+  value String
+  description String
+  userRoles userRoles[]
+}
+
+model token {
+  id Int  @default(autoincrement()) @id
+  userId Int
+  refreshToken String @unique
+  dateForRemoving DateTime
+
+  user user @relation(fields: [userId], references: [id])
+}
+
+model userRoles{
+  id Int @default(autoincrement()) @id
+  roleId Int
+  userId Int
+
+  user user @relation(fields: [userId], references: [id])
+  roles roles @relation(fields: [roleId], references: [id])
+
+}
+
+model userLimit {
+  id Int @default(autoincrement()) @id
+  userId Int
+  todayLimitNew Int
+  todayLimitOld Int
+  today DateTime
+
+  user user @relation(fields: [userId], references: [id])
+}
+

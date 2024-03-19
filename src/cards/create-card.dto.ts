@@ -3,5 +3,7 @@ export class CreateCardDto {
     readonly translation: string;
     readonly example: string;
     readonly category: string;
-    readonly difficulty: number
+    readonly difficulty: number;
+    readonly isFront: boolean;
+
 }

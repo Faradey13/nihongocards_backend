@@ -1,59 +1,48 @@
 import { HttpException, HttpStatus, Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/sequelize";
 import { UserCards } from "../user-cards/user-cards.model";
-import { GetCardDto } from "./getCard.dto";
 import { UserCardsService } from "../user-cards/user-cards.service";
 import { CurrentLessonCards } from "./currentLessonCards.model";
 import * as process from "process";
 import { RateCardDto } from "./rateCard.dto";
-import { User } from "../users/users.model";
-import { Card } from "../cards/cards.model";
-import { Op } from "sequelize";
+import { PrismaService } from "../prisma/prisma.service";
+import { Prisma, currenLesson, userCards, cards } from "@prisma/client";
+import { connect } from "rxjs";
 
 
 @Injectable()
-export class CurrentLessonCardsService {
+export class CurrentLessonService {
 
     constructor(
-      @InjectModel(CurrentLessonCards) private currentLessonRepository: typeof CurrentLessonCards,
-      @InjectModel(UserCards) private userCardsRepository: typeof UserCards,
-      @InjectModel(User) private userRepository: typeof User,
-      @InjectModel(Card) private cardRepository: typeof Card,
+      private prisma: PrismaService,
       private userCardsService: UserCardsService
     ) {
     }
 
     async fillPosition(userId: number) {
-        const userCards = await this.currentLessonRepository.findAll({ where: { userId: userId } });
+        const userCards = await this.prisma.currenLesson.findMany({ where: { userId: userId } });
         await Promise.all(userCards.map(async (card, index) => {
-            card.position = index + 1;
-            await card.save();
+            const pos  = index + 1;
+            await this.prisma.currenLesson.update({where:{
+                id: card.id
+            }, data:{
+                position: pos
+                }})
         }));
 
     }
 
-    async fillData(userId: number) {
-        const userCards = await this.currentLessonRepository.findAll({ where: { userId: userId } });
-        await Promise.all(userCards.map(async (card) => {
-            card.currentLessonData = new Date();
-            await card.save();
-        }));
 
-
-    }
-
-
-    async startNewLesson(dto: GetCardDto) {
-        await this.currentLessonRepository.destroy({ where: {} });
+    async startNewLesson(userId: number) {
+        await this.prisma.currenLesson.deleteMany();
         const today = (new Date());
-        if (await this.currentLessonRepository.count() > 0) {
-            const checkDate = await this.currentLessonRepository.findOne({ where: { userId: dto.userId } });
-            if (checkDate) {
-                const lastLessonCard = checkDate.currentLessonData;
+        if (await this.prisma.currenLesson.count() > 0) {
+            const oldCards = await this.prisma.currenLesson.findMany({ where: { userId: userId } });
+            for(const card of oldCards){
+                const lastLessonCard = card.currentLessonData;
                 if (today.getTime() - lastLessonCard.getTime() > 24) {
-                    await this.currentLessonRepository.destroy({
+                    await this.prisma.currenLesson.delete({
                         where: {
-                            userId: dto.userId
+                            id: card.id
                         }
                     }).then(numRows => {
                         console.log(`Удалено ${numRows}записей`);
@@ -64,172 +53,221 @@ export class CurrentLessonCardsService {
             }
         }
 
-        const cardsForLearn = await this.userCardsService.getCards(dto);
-
-        const userCardIds = cardsForLearn.map(card => card.id);
-
-        const userCardsForLearn = await this.userCardsRepository.findAll({
+        const cardsForLearn = await this.userCardsService.getCards(userId);
+        if(typeof cardsForLearn === "string"){
+            return cardsForLearn
+        }
+        const CardsId = cardsForLearn.map(card => card.id);
+        const userCardsForLearn = await this.prisma.userCards.findMany({
             where: {
-                cardId: userCardIds,
-                userId: dto.userId
+                cardId: {
+                    in: CardsId
+                },
+                userId: userId
             }
         });
 
-        const cardsFromCards = await this.cardRepository.findAll({
-            where: {
-                id: userCardIds
-            }
-        });
 
         try {
             const unitedCards = [];
             userCardsForLearn.forEach(cardU => {
-                const correspondingCard = cardsFromCards.find(card => card.id === cardU.cardId);
+                const correspondingCard = cardsForLearn.find(card => card.id === cardU.cardId);
                 if (correspondingCard) {
                     unitedCards.push({
-                        UserCardsId: cardU.id,
+                        userCardsId: cardU.id,
                         cardId: correspondingCard.id,
                         userId: cardU.userId,
-                        word: correspondingCard.word,
-                        translation: correspondingCard.translation,
-                        example: correspondingCard.example,
-                        category: correspondingCard.category,
-                        difficulty: correspondingCard.difficulty,
-                        image: correspondingCard.image,
-                        audio: correspondingCard.audio,
-                        repetitionNumber: cardU.repetitionNumber,
                         repetitionCount: 0,
-                        totalRepetitionCount: cardU.totalRepetitionCount,
                         grade: 0,
-                        isNew: cardU.isNew,
-                        isHard: cardU.isHard,
-                        position: null,
-                        currentLessonData: new Date()
+                        position: -1,
+                        currentLessonData: new Date(),
+
                     });
                 }
             });
 
 
-            await this.currentLessonRepository.bulkCreate(unitedCards);
-            await this.fillPosition(dto.userId);
-            // await this.fillData(dto.userId);
+            try {
+
+               await this.prisma.currenLesson.createMany({data: unitedCards });
+
+            }
+           catch (e){`карты не загрузились${e.message}`}
+
+
 
         } catch (e) {
             throw new HttpException(`Ошибка загрузки урока: ${e.message}`, HttpStatus.INTERNAL_SERVER_ERROR);
         }
+        try {
+
+            await this.fillPosition(userId);
+
+        }
+        catch (error) {
+            console.error("Ошибка при изменении позиции:", error);
+            throw error;
+        }
     }
 
 
-    async getFirstCard(userID: number) {
-        return await this.currentLessonRepository.findOne({ where: { position: 1, userId: userID } });
+    async getFirstCard(userId: number) {
+        console.log(userId)
+        const newCard= await this.prisma.currenLesson.findFirst({ where: { position: 1, userId: userId } });
+        console.log(newCard)
+        if (!newCard) {
+
+            console.log('карта не найдена'); // или throw new Error("Карточка не найдена");
+            return undefined
+        }
+
+        const newCardData = await this.prisma.cards.findUnique({where: {id: newCard.cardId}})
+
+        if (!newCardData) {
+            console.log('статистика не найдена')
+
+        }
+
+
+        const card = []
+        card.push({
+            cardId: newCardData.id,
+            word: newCardData.word,
+            translation: newCardData.translation,
+            example: newCardData.example,
+            image: newCardData.image,
+            audio: newCardData.audio
+        })
+        return card
+
     }
 
 
-    async updateCard(dto: RateCardDto) {
-        console.log(`карта на оценку${ dto }`)
-        console.log(typeof dto)
-        const cardFromUser = await this.currentLessonRepository.findOne({ where: { cardId: dto.cardId, userId: dto.userId } });
-        cardFromUser.grade = dto.grade;
+    async updateCard(dto: RateCardDto, userId: number) {
+
+
+        const cardFromUser = await this.prisma.currenLesson.findFirst({ where: { cardId: dto.cardId, userId: userId } });
+        const cardFromUserStats = await this.prisma.userCards.findFirst({where:{id: cardFromUser.userCardsId}})
+
+
+        cardFromUser.grade = cardFromUser.grade + dto.grade;
         cardFromUser.repetitionCount++;
-        cardFromUser.totalRepetitionCount++;
-        await cardFromUser.save();
-        console.log(cardFromUser.repetitionNumber)
-        console.log(cardFromUser.grade)
-        console.log(cardFromUser.repetitionCount)
+        cardFromUserStats.totalRepetitionCount++;
 
+
+        const saveStats = async () => {
+            await this.prisma.currenLesson.update({where:{
+                    id: cardFromUser.id
+                }, data: {
+                    ...cardFromUser
+                }})
+
+            await this.prisma.userCards.update({where:{
+                    id: cardFromUserStats.id
+                }, data: {
+                    ...cardFromUserStats
+                }})
+        }
 
 
         let showAgain = false;
-        if (cardFromUser.repetitionNumber === 0) {
+        if (cardFromUserStats.repetitionNumber === 0) {
             if (dto.grade < 3) {
                 cardFromUser.repetitionCount = 0;
-                await cardFromUser.save();
+
             }
             if (dto.grade < 5 || cardFromUser.repetitionCount < 3) {
                 showAgain = true;
-                console.log(dto.grade < 5 && cardFromUser.repetitionCount < 3)
-                console.log(cardFromUser.repetitionCount)
 
             }
         }
-        if (cardFromUser.repetitionNumber > 0) {
+        if (cardFromUserStats.repetitionNumber > 0) {
             if (dto.grade < 3) {
-                cardFromUser.isHard = true;
+                cardFromUserStats.isHard = true;
                 cardFromUser.repetitionCount = 0;
-                await cardFromUser.save();
+                ;
             }
             if (dto.grade < 5 && cardFromUser.repetitionCount < 2) {
                 showAgain = true;
 
             }
         }
-        console.log(showAgain)
 
-        return await this.decideLastStep(showAgain, cardFromUser);
+        await saveStats();
+        return await this.decideLastStep(showAgain, cardFromUser, cardFromUserStats);
 
     }
 
-    async decideLastStep(showAgain: boolean, cardFromUser: CurrentLessonCards) {
+    async decideLastStep(showAgain: boolean, cardFromUser: currenLesson, cardFromUserStats: userCards) {
         if (showAgain) {
             return this.changeCardPosition(cardFromUser);
         } else {
-            if (cardFromUser.isNew) {
-                cardFromUser.isNew = false;
-                await cardFromUser.save();
+            if (cardFromUserStats.isNew) {
+                cardFromUserStats.isNew = false
             }
-            cardFromUser.repetitionNumber++;
-            cardFromUser.grade = Math.floor(cardFromUser.grade / cardFromUser.repetitionCount);
-            await cardFromUser.save();
-            const userCardId = cardFromUser.UserCardsId;
-            const updatingCard = await this.userCardsRepository.findOne({ where: { id: userCardId } });
-            console.log(`до обновления ${updatingCard}`)
-            console.log(updatingCard)
+            cardFromUserStats.repetitionNumber++;
+            cardFromUserStats.grade = Math.floor(cardFromUser.grade / cardFromUser.repetitionCount);
+            const userCardId = cardFromUser.userCardsId;
+            await this.prisma.userCards.update({where:{
+                    id: cardFromUserStats.id
+                }, data: {
+                    ...cardFromUserStats
+                }});
 
 
-            await updatingCard.update({
-                grade: cardFromUser.grade,
-                isHard: cardFromUser.isHard,
-                isNew: cardFromUser.isNew,
-                totalRepetitionCount: cardFromUser.totalRepetitionCount,
-                repetitionNumber: cardFromUser.repetitionNumber
-            });
-            console.log(`после обновления ${updatingCard}`)
-            console.log(updatingCard)
-            console.log(cardFromUser)
             await this.destroyCard(cardFromUser)
             return this.userCardsService.calculateCards(userCardId);
         }
     }
 
 
-    async changeCardPosition(cardForRepeat: CurrentLessonCards) {
-        const cardsToMove = await this.currentLessonRepository.findAll({
+    async changeCardPosition(cardForRepeat: currenLesson) {
+        const cardsToMove = await this.prisma.currenLesson.findMany({
             where: {
-                position: { [Op.lte]: Number(process.env.POSITION_FOR_REPEAT) },
-                id: { [Op.ne]: cardForRepeat.id }
+                AND: [
+                    { position: { lte: Number(process.env.POSITION_FOR_REPEAT) } },
+                    { id: { not: cardForRepeat.id } }
+                ]
             },
-            order: [["position", "ASC"]]
+            orderBy: {
+                position: 'asc'
+            }
         });
 
-        await cardForRepeat.update({ position: null });
-        for (const card of cardsToMove) {
-            await card.update({ position: card.position - 1 });
-        }
+        console.log(`cardForRepeat ${cardForRepeat.position}`)
+        await this.prisma.currenLesson.update({where: {
+                id: cardForRepeat.id
+            },
+            data: {
+                position: -1
+            }
+        });
+        await this.prisma.currenLesson.updateMany({
+            where: {
+                position: { gt: 0, lte: Number(process.env.POSITION_FOR_REPEAT) },
+                id: { not: cardForRepeat.id }
+            },
+            data: {
+                position: { decrement: 1 }
+            }
+        });
 
-        await cardForRepeat.update({ position: Number(process.env.POSITION_FOR_REPEAT) });
+        await this.prisma.currenLesson.update({where: {
+                id: cardForRepeat.id
+            },
+            data: {
+                position: Number(process.env.POSITION_FOR_REPEAT)
+            }
+        });
     }
 
-    async destroyCard(cardForRemove: CurrentLessonCards) {
-        const cardsToMove = await this.currentLessonRepository.findAll({
-            where: {
-                position: { [Op.gt]: 1 },
-                id: { [Op.ne]: cardForRemove.id }
-            },
-            order: [["position", "ASC"]]
+    async destroyCard(cardForRemove: currenLesson) {
+
+        await this.prisma.currenLesson.delete({where:{id: cardForRemove.id}})
+        await this.prisma.currenLesson.updateMany({
+            data: {
+                position: { decrement: 1 }
+            }
         });
-        await cardForRemove.destroy()
-        for (const card of cardsToMove) {
-            await card.update({ position: card.position + 1 });
-        }
     }
 }

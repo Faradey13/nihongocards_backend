@@ -52,8 +52,8 @@ export class UsersController {
     async getUser( @Param('id') id: number) {
         try {
             const user =    await this.usersService.geUserById(id);
-            console.log(user.dataValues)
-            return user.dataValues
+            console.log(user)
+            return user
 
 
 

@@ -19,8 +19,8 @@ export class FilesController {
     }
 
 
-    @Roles("ADMIN")
-    @UseGuards(RolesGuard)
+    // @Roles("ADMIN")
+    // @UseGuards(RolesGuard)
     @ApiOperation({summary: 'Загружка файлов(изображения и аудио)'})
     @ApiResponse({status: 200})
     @Post('upload')

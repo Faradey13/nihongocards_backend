@@ -1,22 +1,20 @@
 import { Injectable } from "@nestjs/common";
-
-import { Card } from "../cards/cards.model";
 import * as csvParser from 'csv-parser';
 import * as fs from "fs";
-import { InjectModel } from "@nestjs/sequelize";
 import { UserCardsService } from "../user-cards/user-cards.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 
 @Injectable()
 export class CsvService {
     constructor(
-      @InjectModel(Card) private cardRepository: typeof Card,
+      private prisma: PrismaService,
       private userCardsService: UserCardsService
     ) {}
 
     async loadCsvData(filePath: string): Promise<void> {
         console.log(filePath)
-        const records: Card[] = [];
+        const records = [];
 
         fs.createReadStream(filePath)
           .pipe(csvParser({ separator: ';' }))
@@ -32,7 +30,7 @@ export class CsvService {
           .on('end', async () => {
 
               try {
-                  await this.cardRepository.bulkCreate(records);
+                  await this.prisma.cards.createMany({data:records});
                   await this.userCardsService.addCardsToUsers()
               } catch (e) {
                   console.log(e.message)
@@ -56,7 +54,7 @@ export class CsvService {
             difficulty : Number(record.difficulty),
             image : record.image,
             audio : record.audio,
-            isFront: record.isFront
+            isFront: Boolean(record.isFront)
         }
 
     }

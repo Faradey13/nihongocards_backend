@@ -4,18 +4,19 @@ import { User } from "../users/users.model";
 import { Card } from "../cards/cards.model";
 import { UserCards } from "../user-cards/user-cards.model";
 import { CurrentLessonCards } from "./currentLessonCards.model";
-import { CurrentLessonCardsService } from "./currentLessonCards.service";
 import { UserCardsModule } from "../user-cards/user-cards.module";
+import { CurrentLessonService } from "./currentLessonCards.service";
+import { PrismaService } from "../prisma/prisma.service";
 
 
 @Module({
-    providers: [CurrentLessonCardsService],
+    providers: [CurrentLessonService, PrismaService],
     controllers: [],
     imports: [
-        SequelizeModule.forFeature([User, Card, UserCards, CurrentLessonCards]),
+        // SequelizeModule.forFeature([User, Card, UserCards, CurrentLessonCards]),
         UserCardsModule
     ], exports: [
-      CurrentLessonCardsService
+      CurrentLessonService
     ]
 
 })

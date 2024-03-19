@@ -6,14 +6,15 @@ import { Card } from "../cards/cards.model";
 import { MulterModule } from "@nestjs/platform-express";
 import { UserCardsModule } from "../user-cards/user-cards.module";
 import { JwtModule } from "@nestjs/jwt";
+import { PrismaService } from "../prisma/prisma.service";
 
 @Module({
   controllers: [CsvController],
-  providers: [CsvService],
+  providers: [CsvService, PrismaService],
   imports: [
     UserCardsModule,
     JwtModule,
-    SequelizeModule.forFeature([Card]),
+    // SequelizeModule.forFeature([Card]),
     MulterModule.register({
       dest: './uploads',
     })

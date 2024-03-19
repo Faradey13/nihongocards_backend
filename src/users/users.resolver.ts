@@ -5,12 +5,14 @@ import { HttpException, HttpStatus } from "@nestjs/common";
 import { Role } from "../roles/roles.model";
 import { AddRoleDto } from "../roles/add-role.dto";
 import { BanUserDto } from "./ban-user.dto";
+import { UserCardsService } from "../user-cards/user-cards.service";
 
 
 @Resolver('User')
 export class UsersResolver{
     constructor(
-      private usersService: UsersService
+      private usersService: UsersService,
+      private userCardsService: UserCardsService
     ) {}
 
     @Query(() => [User])
@@ -22,9 +24,8 @@ export class UsersResolver{
     async getUserById(@Args('id') id: number) {
         try {
             const user =    await this.usersService.geUserById(id);
-            console.log(user.dataValues)
-            return user.dataValues
-
+            console.log(user)
+            return user
 
 
         } catch (error) {
@@ -40,6 +41,11 @@ export class UsersResolver{
     @Mutation(() => User)
     async banUser(@Args('ban') dto: BanUserDto){
         return this.usersService.ban(dto)
+    }
+
+    @Mutation(() => User)
+    async changeLimits(@Args('limits') oldLimit: number, newLimit: number, userId: number){
+        return this.userCardsService.changeLimits(oldLimit,newLimit, userId)
     }
 
 }

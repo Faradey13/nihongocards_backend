@@ -1,14 +1,13 @@
 import { HttpException, HttpStatus, Injectable, UnauthorizedException } from "@nestjs/common";
 import * as bcrypt from "bcryptjs";
 import * as uuid from "uuid";
-import { UsersService } from "../users/users.service";
+import { UsersService} from "../users/users.service";
 import { CreateUserDto } from "../users/create-user.dto";
 import { MailService } from "../mail/mail.service";
 import { TokenDto } from "../token/tokenDto";
 import { TokenService } from "../token/token.service";
-import { InjectModel } from "@nestjs/sequelize";
-import { User } from "../users/users.model";
-import { Token } from "../token/token.model";
+import { PrismaService } from "../prisma/prisma.service";
+
 
 
 @Injectable()
@@ -16,16 +15,21 @@ export class AuthService {
 
 
     constructor(
-      @InjectModel(User) private userRepository: typeof User,
-      @InjectModel(Token) private tokenRepository: typeof Token,
       private userService: UsersService,
       private tokenService: TokenService,
-      private mailService: MailService
+      private mailService: MailService,
+      private prisma: PrismaService
     ) {
     }
 
-    async newTokens(user:User) {
-        const tokenDto = new TokenDto(user);
+    async newTokens(user: TokenDto) {
+
+        const tokenDto = {
+            id: user.id,
+            email: user.email,
+            isActivated: user.isActivated,
+            roles: user.roles
+        };
         const tokens = await this.tokenService.generateToken({ ...tokenDto });
         await this.tokenService.saveToken(user.id, tokens.refreshToken);
         return { ...tokens, user: tokenDto };
@@ -40,22 +44,37 @@ export class AuthService {
         }
         const hashPassword = await bcrypt.hash(userDto.password, 5);
         const activationLink = uuid.v4();
-        console.log(typeof activationLink)
+
         const user = await this.userService.createUser({ ...userDto, password: hashPassword, activationLink });
-        await this.mailService.example(userDto.email, `http://localhost:5000/auth/activation/${activationLink}`);
-        return this.newTokens(user)
+        // await this.mailService.example(userDto.email, `http://localhost:5000/auth/activation/${activationLink}`);
+        const findUser = await this.prisma.user.findUnique({where:{email:user.email}})
+
+        return await this.newTokens(user)
     }
 
-     async activate(activationLink: string) {
+    async activate(activationLink: string) {
         try {
-            await this.userRepository.update({isActivated: true},{where: {
+            const user = await this.prisma.user.findFirst({
+                where: {
                     activationLink: activationLink
-                }})
-        } catch (e) {
-            throw new HttpException(`Ошибка активации акаунта, свяжитесь с администрацией сайта, ${e.message}`, HttpStatus.BAD_REQUEST)
+                }
+            });
+
+            if (!user) {
+                throw new Error("Пользователь не найден");
+            }
+
+            await this.prisma.user.update({
+                where: {
+                    id: user.id
+                },
+                data: {
+                    isActivated: true
+                }
+            });
+        } catch (error) {
+            throw new Error("Ошибка активации пользователя");
         }
-
-
     }
 
     async login(userDto: CreateUserDto) {
@@ -67,8 +86,17 @@ export class AuthService {
         if (!passwordEquals) {
             throw new UnauthorizedException({ message: "Некорректый емейл или пароль" });
         }
+        const userWithRoles = await this.userService.getUserWithRoles(user.id)
 
-        const userDTO = new TokenDto(user)
+
+
+
+        const userDTO: TokenDto = {
+            id: userWithRoles.id,
+            roles: userWithRoles.roles,
+            isActivated: userWithRoles.isActivated,
+            email: userWithRoles.email
+        }
         console.log(`login dto${userDTO}`)
         const tokens = await this.tokenService.generateToken({ ...userDTO })
         console.log(tokens)
@@ -90,7 +118,7 @@ export class AuthService {
         if (!userData || !tokenFromDB) {
             throw new UnauthorizedException('пользователь не авторизован')
         }
-        const user = await this.userRepository.findByPk(userData.id)
+        const user = await this.userService.getUserWithRoles(tokenFromDB.userId)
         return await this.newTokens(user)
     }
 

@@ -8,20 +8,21 @@ import { SequelizeModule } from "@nestjs/sequelize";
 import { User } from "../users/users.model";
 import { Token } from "../token/token.model";
 import { AuthResolver } from "./auth.resolver";
+import { PrismaService } from "../prisma/prisma.service";
 
 
 @Module({
-  providers: [AuthService, AuthResolver],
+  providers: [AuthService, AuthResolver, PrismaService],
   controllers: [AuthController],
   imports: [
     TokenModule,
     MailModule,
-    SequelizeModule.forFeature([User, Token]),
+    // SequelizeModule.forFeature([User, Token]),
     forwardRef(()=>UsersModule),
 
   ],
     exports: [
-      AuthService,
+      AuthService
 
     ]
 })
