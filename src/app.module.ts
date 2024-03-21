@@ -43,7 +43,6 @@ import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin
       autoSchemaFile: join(process.cwd(), 'src/schema.gql'),
       sortSchema: true,
 
-
     }),
     ServeStaticModule.forRoot({
       rootPath: path.resolve(__dirname, 'static'),
